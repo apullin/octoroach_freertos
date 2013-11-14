@@ -1,0 +1,56 @@
+Motor Control @ 1000 Hz
+ - DSP lib calls
+ - large memory model
+ - uses space(dma) ram
+ - Reads 0th order hold from ADC module
+ - Sets PWM
+ 
+Steering Control @ 300 Hz
+ - Software only loop
+ - DSP lib calls
+ - large mem model
+ - uses space(dma) ram
+ - Reads 0th order hold from IMU module
+  
+ ADC DMA copy @ 5 Khz
+ - hardware _DMA0Interrupt
+ - uses space(dma) ram
+ - Triggered automatically, DMA is only ISR
+ 
+IMU @ 1 khz
+ - makes I2C read -> hardware interrupt
+ - makes SPI read -> hardware interrupt
+ - zero order hold to provide values
+ 
+I2C
+ - TWO channels, both used.
+ - no I2C interrupts
+ - polls for Trans success
+ - polls for ACK
+
+SPI
+ - hardware _DMA2Interrupt through _DMA5Interrupt
+ - uses space(dma) RAM
+ 
+Radio
+ - Queues for RX/TX
+ - hardware ISR state machine (RX, TX, transition)
+ - Uses SPI bus + DMA
+ 
+Gyro (subset of IMU)
+ - I2C write/read
+XL (subset of IMU)
+ - I2C write/read
+ 
+Telemetry @ 1 khz
+ - Gets 0th order hold values from IMU
+ - enqueues data to 
+ 
+Flash
+ - Could be queue driven?
+ - Cannot tolerate full queue
+ - Uses SPI + DMA
+ 
+Commands
+ - High level commands, come in over radio buffer
+ - Command queue, gets processed, like APP layer
