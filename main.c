@@ -9,6 +9,7 @@
 //Library includes
 #include "init_default.h"
 #include "utils.h"
+#include "adc_pid.h"
 
 // Task prototypes
 static void vToggleLED1(void *pvParameters);
@@ -53,11 +54,10 @@ void prvSetupHardware(void){
     SetupClock();   //from imageproc-lib , config PLL
     SetupPorts();   //from imageproc-lib, set up LATn, TRISn, etc , requires __IMAGEPROC2
     SwitchClocks(); //from imageproc-lib , switch to PLL clock
-    LED_1 = 1;
-    LED_2 = 1;
-    LED_3 = 1;
-    Nop();
-    Nop();
+
+    adcSetup();  //from octoroach-lib , start ADC w/ DMA
+    //INTERRUPT NOW ACTIVE:    _DMA0Interrupt   , 5 Khz  (??)
+    
 }
 
 void vToggleLED1(void *pvParameters) {
