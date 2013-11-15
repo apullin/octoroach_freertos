@@ -36,6 +36,17 @@
       </logicalFolder>
       <logicalFolder name="f1" displayName="imageproc-lib" projectFiles="true">
         <itemPath>../imageproc-lib/init_default.c</itemPath>
+        <itemPath>../imageproc-lib/pid.c</itemPath>
+      </logicalFolder>
+      <logicalFolder name="f2"
+                     displayName="imageproc-lib_freertos"
+                     projectFiles="true">
+      </logicalFolder>
+      <logicalFolder name="f4" displayName="lib" projectFiles="true">
+        <itemPath>lib/leg_ctrl.c</itemPath>
+      </logicalFolder>
+      <logicalFolder name="f3" displayName="octoroach-lib" projectFiles="true">
+        <itemPath>../octoroach/lib/adc_pid.c</itemPath>
       </logicalFolder>
       <itemPath>main.c</itemPath>
     </logicalFolder>
@@ -48,6 +59,8 @@
   <sourceRootList>
     <Elem>FreeRTOS</Elem>
     <Elem>../imageproc-lib</Elem>
+    <Elem>../octoroach/lib</Elem>
+    <Elem>lib</Elem>
   </sourceRootList>
   <projectmakefile>Makefile</projectmakefile>
   <confs>
@@ -96,7 +109,7 @@
         <property key="enable-symbols" value="true"/>
         <property key="enable-unroll-loops" value="false"/>
         <property key="extra-include-directories"
-                  value=".;FreeRTOS\Source\include;FreeRTOS\Source\portable\MPLAB\PIC24_dsPIC;..\imageproc-lib"/>
+                  value=".;lib;FreeRTOS\Source\include;FreeRTOS\Source\portable\MPLAB\PIC24_dsPIC;..\imageproc-lib;..\octoroach\lib"/>
         <property key="isolate-each-function" value="false"/>
         <property key="keep-inline" value="false"/>
         <property key="oXC16gcc-align-arr" value="false"/>
