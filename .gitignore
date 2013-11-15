@@ -1,10 +1,10 @@
 /*.o
 build
 dist
-Makefile-default.mk
-Makefile-genesis.properties
-Makefile-impl.mk
-Makefile-local-default.mk
-Makefile-variables.mk
-Package-default.bash
+nbproject/Makefile-default.mk
+nbproject/Makefile-genesis.properties
+nbproject/Makefile-impl.mk
+nbproject/Makefile-local-default.mk
+nbproject/Makefile-variables.mk
+nbproject/Package-default.bash
 nbproject/private
