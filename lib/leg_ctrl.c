@@ -2,19 +2,23 @@
 
 //leg_ctrl.c
 
-#include "pid.h"
+#include <FreeRTOS.h>
+#include "queue.h" //FreeRTOS queue header
+
+#include <xc.h>
+
 #include "leg_ctrl.h"
-#include "motor_ctrl.h"
-#include "timer.h"
+#include "pid.h"
 #include "adc_pid.h"
 #include "pwm.h"
 #include "led.h"
 #include "adc.h"
+
+
+
 #include "move_queue.h"
-#include "tail_queue.h"
+
 #include "math.h"
-#include "steering.h"
-#include "sys_service.h"
 #include <dsp.h>
 #include <stdlib.h> // for malloc
 
@@ -43,9 +47,16 @@ int blinkCtr;
 
 //Move queue variables, global
 //TODO: move these into a move queue interface module
-MoveQueue moveq;
+//MoveQueue moveq;
+
+xQueueHandle xmoveq;
+
+
 moveCmdT currentMove, idleMove;
 unsigned long currentMoveStart, moveExpire;
+
+
+
 
 //BEMF related variables; we store a history of the last 3 values,
 //but also provide variables for the "current" and "last" values for clarity
@@ -79,23 +90,15 @@ static void legCtrlServiceRoutine(void){
     serviceMotionPID();  //Update controllers
 }
 
-static void SetupTimer1(void) {
-    unsigned int T1CON1value, T1PERvalue;
-    T1CON1value = T1_ON & T1_SOURCE_INT & T1_PS_1_1 & T1_GATE_OFF &
-            T1_SYNC_EXT_OFF & T1_IDLE_CON;  //correct
-
-    T1PERvalue = 0x9C40; //clock period = 0.001s = (T1PERvalue/FCY) (1KHz)
-    //T1PERvalue = 0x9C40/2;
-    //getT1_ticks() = 0;
-    //OpenTimer1(T1CON1value, T1PERvalue);
-    //ConfigIntTimer1(T1_INT_PRIOR_6 & T1_INT_ON);
-    int retval;
-    retval = sysServiceConfigT1(T1CON1value, T1PERvalue, T1_INT_PRIOR_6 & T1_INT_ON);
-    //TODO: Put a soft trap here, conditional on retval
+static void vStartLegCtrlTask(void) {
+    //Start FreeRTOS task here
 }
 
 
 void legCtrlSetup() {
+
+    xQueue = xQueueCreate( 5, sizeof( moveCmdt ) );
+
     int i;
 
     //Setup for PID controllers
