@@ -43,6 +43,7 @@
                      projectFiles="true">
       </logicalFolder>
       <logicalFolder name="f4" displayName="lib" projectFiles="true">
+        <itemPath>lib/move_queue.c</itemPath>
       </logicalFolder>
       <logicalFolder name="f3" displayName="octoroach-lib" projectFiles="true">
         <itemPath>../octoroach/lib/adc_pid.c</itemPath>

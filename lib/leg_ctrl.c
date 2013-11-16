@@ -15,7 +15,6 @@
 #include "adc.h"
 
 
-
 #include "move_queue.h"
 
 #include "math.h"
