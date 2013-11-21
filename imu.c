@@ -1,4 +1,8 @@
-// Authors: nkohut
+// Authors: apullin, nkohut
+
+#include "FreeRTOS.h"
+#include "queue.h"
+#include "task.h"
 
 #include "utils.h"
 #include "led.h"
@@ -8,13 +12,15 @@
 #include "dfilter_avg.h"
 #include "adc_pid.h"
 #include "leg_ctrl.h"
-#include "sys_service.h"
 //#include "ams-enc.h"
 #include "imu.h"
 #include <stdlib.h>
 
-#define TIMER_FREQUENCY     1000.0                 // 300 Hz
-#define TIMER_PERIOD        1/TIMER_FREQUENCY   //This is used for numerical integration
+#define IMU_TASK_PRIORITY       1
+#define IMU_TASK_FREQUENCY_HZ   1000.0
+#define IMU_TASK_PERIOD_MS      1000.0/IMU_TASK_FREQUENCY_HZ
+
+static xTaskHandle xImuTaskHandle = NULL;
 
 //Setup for Gyro Z averaging filter
 #define GYRO_AVG_SAMPLES 	4
@@ -45,41 +51,49 @@ static int lastXLYValue = 0;
 static int lastXLZValue = 0;
 
 
-static void SetupTimer4(); 
-static void imuServiceRoutine(void);  //To be installed with sysService
-//The following local functions are called by the service routine:
-static void imuISRHandler(void);
+// Private function prototypes
+void xImuTask();
 
-static char imuServiceHandle;
 
-////   Private functions
-////////////////////////
-/////////        IMU ISR          ////////
-////////  Installed to Timer4 @ 300hz  ////////
-
-static void imuServiceRoutine(void){
-    //This intermediate function is used in case we want to tie other
-    //sub-taks to the imu service routine.
-    //TODO: Is this neccesary?
-    imuISRHandler();
+portBASE_TYPE vStarLegCtrlTask(void){
+    portBASE_TYPE xStatus;
+    const signed char* taskString = "IMU Task";
+    
+    xStatus = xTaskCreate(xImuTask, /* Pointer to the function that implements the task. */
+            taskString, /* Text name for the task. This is to facilitate debugging. */
+            240, /* Stack depth in words. */
+            NULL, /* We are not using the task parameter. */
+            IMU_TASK_PRIORITY, /* This task will run at priority 1. */
+            &xImuTaskHandle); /* We are not going to use the task handle. */
+    
+    return xStatus;
 }
 
-static void imuISRHandler(){
-	
-	int gyroData[3];
-        int xlData[3];
+xTaskHandle imuGetTaskHandle(void){
+    return xImuTaskHandle;
+}
 
-	/////// Get Gyro data and calc average via filter
-        CRITICAL_SECTION_START;
+////   Private functions
+void xImuTask( void *pvParameters ) {
+
+    portTickType xLastWakeTime;
+    xLastWakeTime = xTaskGetTickCount();
+
+    int gyroData[3];
+    int xlData[3];
+
+    dfilterAvgCreate(&gyroZavg, GYRO_AVG_SAMPLES);
+
+    for (;;) { //Task loop
+
+        // Get Gyro data and calc average via filter
         gyroReadXYZ(); //bad design of gyro module; todo: humhu
-	gyroGetIntXYZ(gyroData);
-	
+        gyroGetIntXYZ(gyroData);
 
         //XL
-        xlGetXYZ((unsigned char*)xlData); //bad design of gyro module; todo: humhu
-        CRITICAL_SECTION_END;
+        xlGetXYZ((unsigned char*) xlData); //bad design of gyro module; todo: humhu
 
-        
+        //Copy values to local static variables
         lastGyroXValue = gyroData[0];
         lastGyroYValue = gyroData[1];
         lastGyroZValue = gyroData[2];
@@ -89,20 +103,16 @@ static void imuISRHandler(){
         lastXLZValue = xlData[2];
 
         //Gyro threshold:
-        if((lastGyroXValue < GYRO_DRIFT_THRESH) && (lastGyroXValue > -GYRO_DRIFT_THRESH)){
+        if ((lastGyroXValue < GYRO_DRIFT_THRESH) && (lastGyroXValue > -GYRO_DRIFT_THRESH)) {
             lastGyroXValue = lastGyroXValue >> 1; //fast divide by 2
         }
-        if((lastGyroYValue < GYRO_DRIFT_THRESH) && (lastGyroYValue > -GYRO_DRIFT_THRESH)){
+        if ((lastGyroYValue < GYRO_DRIFT_THRESH) && (lastGyroYValue > -GYRO_DRIFT_THRESH)) {
             lastGyroYValue = lastGyroYValue >> 1; //fast divide by 2
         }
-        if((lastGyroZValue < GYRO_DRIFT_THRESH) && (lastGyroZValue > -GYRO_DRIFT_THRESH)){
+        if ((lastGyroZValue < GYRO_DRIFT_THRESH) && (lastGyroZValue > -GYRO_DRIFT_THRESH)) {
             lastGyroZValue = lastGyroZValue >> 1; //fast divide by 2
         }
-        
-        // Conversion to float
-        //lastGyroXValueDeg = (float) (lastGyroXValue*LSB2DEG);
-        //lastGyroYValueDeg = (float) (lastGyroYValue*LSB2DEG);
-        //lastGyroZValueDeg = (float) (lastGyroZValue*LSB2DEG);
+
 
         //Update the filter with a new value
         dfilterAvgUpdate(&gyroZavg, gyroData[2]);
@@ -112,33 +122,15 @@ static void imuISRHandler(){
         //lastGyroZValueAvgDeg = (float)lastGyroZValueAvg*LSB2DEG;
 
         //lastBodyZPositionDeg = lastBodyZPositionDeg + lastGyroZValueDeg*TIMER_PERIOD;
-        
-}
 
-static void SetupTimer4(){
-    ///// Timer 4 setup, 300Hz /////
-    // period value = Fcy/(prescale*Ftimer)
-    unsigned int T4CON1value, T4PERvalue;
-    // prescale 1:64
-    T4CON1value = T4_ON & T4_IDLE_CON & T4_GATE_OFF & T4_PS_1_64 & T4_SOURCE_INT;
-    // Period is set so that period = 3.3ms (300Hz), MIPS = 40
-    //T4PERvalue = 2083; // ~300Hz (40e6/(64*2083) where 64 is the prescaler
-    /////////////////////
-    //// For high speed imu data
-    T4PERvalue = 625;   //1000 hz
-    //T4PERvalue = 1250;  //500 hz
-    int retval;
-    retval = sysServiceConfigT4(T4CON1value, T4PERvalue, T4_INT_PRIOR_6 & T4_INT_ON);
+        // Delay task in a periodic manner
+        vTaskDelayUntil(&xLastWakeTime, (IMU_TASK_PERIOD_MS / portTICK_RATE_MS));
+
+    }
 }
 
 ////   Public functions
 ////////////////////////
-void imuSetup(){
-    imuServiceHandle = sysServiceInstallT4(imuServiceRoutine);
-    SetupTimer4();
-    dfilterAvgCreate(&gyroZavg, GYRO_AVG_SAMPLES);
-}
-
 int imuGetGyroXValue() {
     return lastGyroXValue;
 }
@@ -194,14 +186,10 @@ int imuGetXLZValue(){
     return lastXLZValue;
 }
 
-void imuSuspend(void) {
-    if (imuServiceHandle != -1) {
-        sysServiceDisableSvcT4(imuServiceHandle);
-    }
+void imuSuspendTask(void) {
+    vTaskSuspend(xImuTaskHandle);
 }
 
-void imuResume(void) {
-    if (imuServiceHandle != -1) {
-        sysServiceEnableSvcT4(imuServiceHandle);
-    }
+void imuResumeTask(void) {
+    vTaskResume(xImuTaskHandle);
 }
