@@ -38,17 +38,20 @@
         <itemPath>../imageproc-lib/init_default.c</itemPath>
         <itemPath>../imageproc-lib/pid.c</itemPath>
         <itemPath>../imageproc-lib/adc_pid.c</itemPath>
+        <itemPath>../imageproc-lib/mpu6000.c</itemPath>
+        <itemPath>../imageproc-lib/mpu6000.h</itemPath>
       </logicalFolder>
       <logicalFolder name="f2"
                      displayName="imageproc-lib_freertos"
                      projectFiles="true">
       </logicalFolder>
       <logicalFolder name="f4" displayName="lib" projectFiles="true">
-        <itemPath>imu.c</itemPath>
+        <itemPath>lib/imu_freertos.c</itemPath>
+        <itemPath>lib/imu_freertos.h</itemPath>
       </logicalFolder>
       <logicalFolder name="f3" displayName="octoroach-lib" projectFiles="true">
       </logicalFolder>
-      <itemPath>main.c</itemPath>
+      <itemPath>main_octoroach_freertos.c.c</itemPath>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"
@@ -136,6 +139,7 @@
         <property key="use-iar" value="false"/>
       </C30>
       <C30-AR>
+        <property key="additional-options-chop-files" value="false"/>
       </C30-AR>
       <C30-AS>
         <property key="assembler-symbols" value=""/>

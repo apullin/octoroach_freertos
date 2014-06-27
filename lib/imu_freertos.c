@@ -1,18 +1,25 @@
-// Authors: apullin, nkohut
+/*
+ * File:   imu_freertos.c
+ * Author: Andrew Pullin
+ *
+ * Created on June 27, 2014
+ */
 
+#include<xc.h>
+//FreeRTOS includes
 #include "FreeRTOS.h"
-#include "queue.h"
 #include "task.h"
-
+#include "queue.h"
+#include "semphr.h"
+//Library includes
 #include "utils.h"
 #include "led.h"
 #include "gyro.h"
 #include "xl.h"
 #include "pid.h"
 #include "dfilter_avg.h"
-#include "adc_pid.h"
-#include "leg_ctrl.h"
-//#include "ams-enc.h"
+#include "mpu6000.h"
+
 #include "imu.h"
 #include <stdlib.h>
 
@@ -25,19 +32,16 @@ static xTaskHandle xImuTaskHandle = NULL;
 //Setup for Gyro Z averaging filter
 #define GYRO_AVG_SAMPLES 	4
 
+#define ABS(my_val) ((my_val) < 0) ? -(my_val) : (my_val)
 
 //Filter stuctures for gyro variables
 static dfilterAvgInt_t gyroZavg;
 
+//Variables to hold last latest values
+static int lastGyro[3] = {0,0,0};
+static int lastXL[3] = {0,0,0};
 
-//TODO: change these to arrays
-static int lastGyroXValue = 0;
-static int lastGyroYValue = 0;
-static int lastGyroZValue = 0;
-
-static float lastGyroXValueDeg = 0.0;
-static float lastGyroYValueDeg = 0.0;
-static float lastGyroZValueDeg = 0.0;
+static float lastGyroDeg[3] = {0,0,0};
 
 static int lastGyroZValueAvg = 0;
 
@@ -45,22 +49,15 @@ static float lastGyroZValueAvgDeg = 0.0;
 
 static float lastBodyZPositionDeg = 0.0;
 
-//XL
-static int lastXLXValue = 0;
-static int lastXLYValue = 0;
-static int lastXLZValue = 0;
-
 
 // Private function prototypes
-void xImuTask();
+static portTASK_FUNCTION_PROTO(vIMUTask, pvParameters); //FreeRTOS task
 
-
-portBASE_TYPE vStarLegCtrlTask(void){
+portBASE_TYPE vStartIMUTask(void){
     portBASE_TYPE xStatus;
-    const signed char* taskString = "IMU Task";
     
-    xStatus = xTaskCreate(xImuTask, /* Pointer to the function that implements the task. */
-            taskString, /* Text name for the task. This is to facilitate debugging. */
+    xStatus = xTaskCreate(vIMUTask, /* Pointer to the function that implements the task. */
+            (const char *) "IMU Task", /* Text name for the task. This is to facilitate debugging. */
             240, /* Stack depth in words. */
             NULL, /* We are not using the task parameter. */
             IMU_TASK_PRIORITY, /* This task will run at priority 1. */
@@ -74,7 +71,9 @@ xTaskHandle imuGetTaskHandle(void){
 }
 
 ////   Private functions
-void xImuTask( void *pvParameters ) {
+void vIMUTask( void *pvParameters ) {
+
+    mpuSetup();
 
     portTickType xLastWakeTime;
     xLastWakeTime = xTaskGetTickCount();
@@ -86,32 +85,39 @@ void xImuTask( void *pvParameters ) {
 
     for (;;) { //Task loop
 
-        // Get Gyro data and calc average via filter
+        #if defined (__IMAGEPROC24)
+        /////// Get Gyro data and calc average via filter
         gyroReadXYZ(); //bad design of gyro module; todo: humhu
         gyroGetIntXYZ(gyroData);
-
         //XL
         xlGetXYZ((unsigned char*) xlData); //bad design of gyro module; todo: humhu
+        #elif defined (__IMAGEPROC25)
+        mpuBeginUpdate();
+        mpuGetGyro(gyroData);
+        mpuGetXl(xlData);
+        #endif
 
         //Copy values to local static variables
-        lastGyroXValue = gyroData[0];
-        lastGyroYValue = gyroData[1];
-        lastGyroZValue = gyroData[2];
+        lastGyro[0] = gyroData[0];
+        lastGyro[1] = gyroData[1];
+        lastGyro[2] = gyroData[2];
 
-        lastXLXValue = xlData[0];
-        lastXLYValue = xlData[1];
-        lastXLZValue = xlData[2];
+        lastXL[0] = xlData[0];
+        lastXL[1] = xlData[1];
+        lastXL[2] = xlData[2];
 
         //Gyro threshold:
-        if ((lastGyroXValue < GYRO_DRIFT_THRESH) && (lastGyroXValue > -GYRO_DRIFT_THRESH)) {
-            lastGyroXValue = lastGyroXValue >> 1; //fast divide by 2
+        int i;
+        for (i = 0; i < 3; i++) {
+            //Threshold:
+            if (ABS(lastGyro[i]) < GYRO_DRIFT_THRESH) {
+                lastGyro[0] = lastGyro[i] >> 1; //fast divide by 2
+            }
         }
-        if ((lastGyroYValue < GYRO_DRIFT_THRESH) && (lastGyroYValue > -GYRO_DRIFT_THRESH)) {
-            lastGyroYValue = lastGyroYValue >> 1; //fast divide by 2
-        }
-        if ((lastGyroZValue < GYRO_DRIFT_THRESH) && (lastGyroZValue > -GYRO_DRIFT_THRESH)) {
-            lastGyroZValue = lastGyroZValue >> 1; //fast divide by 2
-        }
+
+        lastGyroDeg[0] = (float) (lastGyro[0] * LSB2DEG);
+        lastGyroDeg[1] = (float) (lastGyro[1] * LSB2DEG);
+        lastGyroDeg[2] = (float) (lastGyro[2] * LSB2DEG);
 
 
         //Update the filter with a new value
@@ -129,31 +135,33 @@ void xImuTask( void *pvParameters ) {
     }
 }
 
+
+////////////////////////
 ////   Public functions
 ////////////////////////
 int imuGetGyroXValue() {
-    return lastGyroXValue;
+    return lastGyro[0];
 }
 
 int imuGetGyroYValue() {
-    return lastGyroYValue;
+    return lastGyro[1];
 }
 
 int imuGetGyroZValue() {
-    return lastGyroZValue;
+    return lastGyro[2];
 }
 
 
 float imuGetGyroXValueDeg() {
-    return lastGyroXValueDeg;
+    return lastGyroDeg[0];
 }
 
 float imuGetGyroYValueDeg() {
-    return lastGyroYValueDeg;
+    return lastGyroDeg[1];
 }
 
 float imuGetGyroZValueDeg() {
-    return lastGyroZValueDeg;
+    return lastGyroDeg[2];
 }
 
 
@@ -174,18 +182,19 @@ void imuResetGyroZAvg(){
     dfilterZero(&gyroZavg);
 }
 
-int imuGetXLXValue(){
-    return lastXLXValue;
+int imuGetXLXValue() {
+    return lastXL[0];
 }
 
-int imuGetXLYValue(){
-    return lastXLYValue;
+int imuGetXLYValue() {
+    return lastXL[1];
 }
 
-int imuGetXLZValue(){
-    return lastXLZValue;
+int imuGetXLZValue() {
+    return lastXL[2];
 }
 
+// FreeRTOS task control functions
 void imuSuspendTask(void) {
     vTaskSuspend(xImuTaskHandle);
 }
