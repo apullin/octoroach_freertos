@@ -44,6 +44,7 @@
                      projectFiles="true">
       </logicalFolder>
       <logicalFolder name="f4" displayName="lib" projectFiles="true">
+        <itemPath>imu.c</itemPath>
       </logicalFolder>
       <logicalFolder name="f3" displayName="octoroach-lib" projectFiles="true">
       </logicalFolder>
