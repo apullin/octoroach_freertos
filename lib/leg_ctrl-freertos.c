@@ -2,77 +2,89 @@
 
 //leg_ctrl.c
 
-#include <FreeRTOS.h>
-#include "queue.h" //FreeRTOS queue header
+#include<xc.h>
+//FreeRTOS includes
+#include "FreeRTOS.h"
+#include "task.h"
+#include "queue.h"
+#include "semphr.h"
 
-#include <xc.h>
-
-#include "leg_ctrl.h"
+//Library includes
+#include "leg_ctrl-freertos.h"
 #include "pid.h"
 #include "adc_pid.h"
 #include "pwm.h"
 #include "led.h"
 #include "adc.h"
 
-
-#include "move_queue.h"
-
 #include "math.h"
 #include <dsp.h>
 #include <stdlib.h> // for malloc
 
-#define INT_MIN -32768
-#define INT_MAX 32767
 
-#define ABS(my_val) ((my_val) < 0) ? -(my_val) : (my_val)
 
-//PID container objects
-pidObj motor_pidObjs[NUM_MOTOR_PIDS];
+//////////////////////////////////////////////////
+//////////      FreeRTOS config        ///////////
+//////////////////////////////////////////////////
+#define LEG_CTRL_TASK_PERIOD_MS      1
+#define MOVE_QUEUE_SIZE          16
 
+
+//////////////////////////////////////////////////
+//////////      Public variables      ///////////
+//////////////////////////////////////////////////
+int blinkCtr;   //Counter for blinking the red LED during motion
+pidObj motor_pidObjs[NUM_MOTOR_PIDS];   //PID container objects
+
+moveCmdT currentMove, idleMove;
+unsigned long currentMoveStart, moveExpire;
+
+//BEMF related variables; we store a history of the last 3 values,
+//but also provide variables for the "current" and "last" values for clarity
+//in code below
+static int bemf[NUM_MOTOR_PIDS]; //used to store the true, unfiltered speed
+static int bemfLast[NUM_MOTOR_PIDS]; // Last post-median-filter value
+static int bemfHist[NUM_MOTOR_PIDS][3]; //This is ONLY for applying the median filter to
+
+///// DSP specific //////
 #ifdef PID_HARDWARE
 //DSP PID stuff
-//These have to be declared here!
+//These have to be declared here
 fractional motor_abcCoeffs[NUM_MOTOR_PIDS][3] __attribute__((section(".xbss, bss, xmemory")));
 fractional motor_controlHists[NUM_MOTOR_PIDS][3] __attribute__((section(".ybss, bss, ymemory")));
 #endif
 
-//Counter for blinking the red LED during motion
-int blinkCtr;
+
+//////////////////////////////////////////////////
+//////////      Private variables      ///////////
+//////////////////////////////////////////////////
+static xTaskHandle xLegCtrlTaskHandle = NULL;
+static QueueHandle_t xMoveQueue;
+//This is an array to map legCtrl controller to PWM output channels
+static int legCtrlOutputChannels[NUM_MOTOR_PIDS];
+
+static int pwm_period;
+static int max_pwm;
+
+//Global flag for wether or not the robot is in motion
+volatile char inMotion;
+
+
 
 //This is an option to force the PID outputs back to zero when there is no input.
 //This was an attempt to stop bugs w/ motor twitching, or controller wandering.
 //It may not be needed anymore.
 #define PID_ZEROING_ENABLE 1
 
-//Move queue variables, global
-//TODO: move these into a move queue interface module
-//MoveQueue moveq;
-
-xQueueHandle xmoveq;
 
 
-moveCmdT currentMove, idleMove;
-unsigned long currentMoveStart, moveExpire;
+//////////////////////////////////////////////////
+////////// Private function prototypes ///////////
+//////////////////////////////////////////////////
+static portTASK_FUNCTION_PROTO(vLegCtrlTask, pvParameters);       //FreeRTOS task, 1khz leg control
+static int medianFilter3(int*);
 
 
-
-
-//BEMF related variables; we store a history of the last 3 values,
-//but also provide variables for the "current" and "last" values for clarity
-//in code below
-int bemf[NUM_MOTOR_PIDS]; //used to store the true, unfiltered speed
-int bemfLast[NUM_MOTOR_PIDS]; // Last post-median-filter value
-int bemfHist[NUM_MOTOR_PIDS][3]; //This is ONLY for applying the median filter to
-int medianFilter3(int*);
-
-//This is an array to map legCtrl controller to PWM output channels
-int legCtrlOutputChannels[NUM_MOTOR_PIDS];
-
-//Global flag for wether or not the robot is in motion
-volatile char inMotion;
-
-//Function to be installed into T1, and setup function
-static void SetupTimer1(void);
 static void legCtrlServiceRoutine(void);  //To be installed with sysService
 //The following local functions are called by the service routine:
 static void serviceMoveQueue(void);
@@ -80,23 +92,34 @@ static void moveSynth();
 static void serviceMotionPID();
 static void updateBEMF();
 
-/////////        Leg Control ISR       ////////
-/////////  Installed to Timer1 @ 1Khz  ////////
-//void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void) {
-static void legCtrlServiceRoutine(void){
-    serviceMoveQueue();
-    moveSynth();         //TODO: port to synth module
-    serviceMotionPID();  //Update controllers
+
+void vLegCtrlTask(void *pvParameters) { //FreeRTOS task
+
+    portTickType xLastWakeTime;
+    xLastWakeTime = xTaskGetTickCount();
+
+    for (;;) { //Task loop
+
+        serviceMoveQueue();
+        moveSynth();         //TODO: port to synth module
+        serviceMotionPID();  //Update controllers
+
+        // Delay task in a periodic manner
+        vTaskDelayUntil(&xLastWakeTime, (LEG_CTRL_TASK_PERIOD_MS / portTICK_RATE_MS));
+
+    } // END of task loop
 }
 
-static void vStartLegCtrlTask(void) {
-    //Start FreeRTOS task here
-}
 
 
 void legCtrlSetup() {
 
-    xQueue = xQueueCreate( 5, sizeof( moveCmdt ) );
+    xMoveQueue = xQueueCreate( MOVE_QUEUE_SIZE, sizeof( moveCmdt ) );
+
+    //Get maximum & saturation values
+    //The factor of 2 is a quirk of the MicroChip PWM module, rising AND falling edges of PWM are counted
+    pwm_period = tiHGetPWMPeriod();  //calculation of this value is left to the module that configures the motor control peripheral
+    max_pwm = tiHGetPWMMax();
 
     int i;
 
@@ -110,28 +133,19 @@ void legCtrlSetup() {
         motor_pidObjs[i].dspPID.controlHistory =
                 motor_controlHists[i];
 #endif
-        pidInitPIDObj(&(motor_pidObjs[i]), LEG_DEFAULT_KP, LEG_DEFAULT_KI,
-                LEG_DEFAULT_KD, LEG_DEFAULT_KAW, LEG_DEFAULT_KFF);
-        //Set up max's and saturation values
-        motor_pidObjs[i].satValPos = SATTHROT;
-        motor_pidObjs[i].satValNeg = 0;
-        motor_pidObjs[i].maxVal = FULLTHROT;
-        motor_pidObjs[i].minVal = 0;
+        pidInitPIDObj(&(motor_pidObjs[i]), LEG_CTRL_DEFAULT_KP, LEG_CTRL_DEFAULT_KI,
+                LEG_CTRL_DEFAULT_KD, LEG_CTRL_DEFAULT_KAW, LEG_CTRL_DEFAULT_KFF);
+        //Set max and saturation values
+        motor_pidObjs[i].satValPos = max_pwm;
+        motor_pidObjs[i].satValNeg = -max_pwm;
+        motor_pidObjs[i].maxVal = 2*pwm_period; //dsPIC PWM module specific, pwm counts on up and down edge
+        motor_pidObjs[i].minVal = -2*pwm_period;
     }
 
     //Set which PWM output each PID Object will correspond to
-    legCtrlOutputChannels[0] = MC_CHANNEL_PWM1;
-    //legCtrlOutputChannels[1] = MC_CHANNEL_PWM4;
-    legCtrlOutputChannels[1] = MC_CHANNEL_PWM2;
+    legCtrlOutputChannels[0] = OCTOROACH_LEG1_MOTOR_CHANNEL;
+    legCtrlOutputChannels[1] = OCTOROACH_LEG2_MOTOR_CHANNEL;
 
-    SetupTimer1(); // Timer 1 @ 1 Khz
-    int retval;
-    retval = sysServiceInstallT1(legCtrlServiceRoutine);
-    //ADC_OffsetL = 1; //prevent divide by zero errors
-    //ADC_OffsetR = 1;
-
-    //Move Queue setup and initialization
-    moveq = mqInit(32);
     idleMove = malloc(sizeof (moveCmdStruct));
     idleMove->inputL = 0;
     idleMove->inputR = 0;
@@ -163,6 +177,16 @@ void legCtrlSetup() {
         bemfHist[i][1] = 0;
         bemfHist[i][2] = 0;
     }
+
+    portBASE_TYPE xStatus;
+    
+    xStatus = xTaskCreate(vLegCtrlTask, /* Pointer to the function that implements the task. */
+            (const char *) "Leg Controller Task", /* Text name for the task. This is to facilitate debugging. */
+            240, /* Stack depth in words. */
+            NULL, /* We are not using the task parameter. */
+            uxPriority, /* This task will run at priority 1. */
+            &xLegCtrlTaskHandle); /* We are not going to use the task handle. */
+
 }
 
 // Runs the PID controllers for the legs
@@ -206,10 +230,7 @@ void serviceMotionPID() {
 
             //Set PWM duty cycle
             SetDCMCPWM(legCtrlOutputChannels[j], motor_pidObjs[j].output, 0);
-            if(motor_pidObjs[j].output > 0){
-            }
-            if((PDC1 > 0) || (PDC2 > 0)){
-            }
+            
         }//end of if (on / off)
         else if (PID_ZEROING_ENABLE) { //if PID loop is off
             SetDCMCPWM(legCtrlOutputChannels[j], 0, 0);
@@ -220,45 +241,60 @@ void serviceMotionPID() {
 
 void updateBEMF() {
     //Back EMF measurements are made automatically by coordination of the ADC, PWM, and DMA.
-    //Copy to local variables. Not strictly neccesary, just for clarity.
-    //This **REQUIRES** that the divider on the battery & BEMF circuits have the same ratio.
-    bemf[0] = adcGetVBatt() - adcGetBEMFL();
-    bemf[1] = adcGetVBatt() - adcGetBEMFR();
-    //NOTE: at this point, we should have a proper correspondance between
-    //   the order of all the structured variable; bemf[i] associated with
-    //   pidObjs[i], bemfLast[i], etc.
-    //   Any "jumbling" of the inputs can be done in the above assignments.
 
-    //Negative ADC measures mean nothing and should never happen anyway
-    if (bemf[0] < 0) {
-        bemf[0] = 0;
-    }
-    if (bemf[1] < 0) {
-        bemf[1] = 0;
-    }
+    //This assignment here is arbitrary.
+    bemf[0] = adcGetMotorA();
+    bemf[1] = adcGetMotorB();
+    //Offsets are subtracted later; currently, all readings will be > 0
 
     //Apply median filter
-    int i;
-    for (i = 0; i < NUM_MOTOR_PIDS; i++) {
-        bemfHist[i][2] = bemfHist[i][1]; //rotate first
-        bemfHist[i][1] = bemfHist[i][0];
-        bemfHist[i][0] = bemf[i]; //include newest value
-        bemf[i] = medianFilter3(bemfHist[i]); //Apply median filter
-    }
+    //int i;
+    //for (i = 0; i < NUM_MOTOR_PIDS; i++) {
+    //    bemfHist[i][2] = bemfHist[i][1]; //rotate first
+    //    bemfHist[i][1] = bemfHist[i][0];
+    //    bemfHist[i][0] = bemf[i]; //include newest value
+        //bemf[i] = medianFilter3(bemfHist[i]); //Apply median filter
+   // }
 
-    // IIR filter on BEMF: y[n] = 0.2 * y[n-1] + 0.8 * x[n]
+    //Subtract offset
+    //This is relevant for IP2.5, since the motors can go in forward and reverse
+    //  EXTRA NEGATIVE HERE is to make gains positive
+    //   TODO: Understand exactly why this is the case
+    bemf[0] = -(bemf[0] - motor_pidObjs[0].inputOffset);
+    bemf[1] = -(bemf[1] - motor_pidObjs[1].inputOffset);
+    //bemf now should be in range (-415, 415)
+    // See wiki for more details
+
+    // IIR filter on BEMF: y[n] = 0.5 * y[n-1] + 0.5 * x[n]
     bemf[0] = (5 * (long) bemfLast[0] / 10) + 5 * (long) bemf[0] / 10;
     bemf[1] = (5 * (long) bemfLast[1] / 10) + 5 * (long) bemf[1] / 10;
     bemfLast[0] = bemf[0]; //bemfLast will not be used after here, OK to set
     bemfLast[1] = bemf[1];
 
+    //BEMF deadband
+    // This is a hack for MAST 2014 demo
+    // Currently, the legs seem to drift all the time.
+
+    int bemftemp[2];
+    bemftemp[0] = abs(bemf[0]);
+    bemftemp[1] = abs(bemf[1]);
+
+#define BEMF_DEADBAND 7
+    if(bemftemp[0] <= BEMF_DEADBAND){
+        bemf[0] = 0;
+    }
+    if(bemftemp[1] <= BEMF_DEADBAND){
+        bemf[1] = 0;
+    }
+
+
     //Simple indicator if a leg is "in motion", via the yellow LED.
     //Not functionally necceasry; can be elimited to use the LED for something else.
-    if ((bemf[0] > 0) || (bemf[1] > 0)) {
-        LED_YELLOW = 1;
-    } else {
-        LED_YELLOW = 0;
-    }
+    //if ((bemf[0] > 0) || (bemf[1] > 0)) {
+    //    LED_YELLOW = 1;
+    //} else {
+    //    LED_YELLOW = 0;
+    //}
 }
 
 void serviceMoveQueue(void) {
@@ -273,25 +309,35 @@ void serviceMoveQueue(void) {
         blinkCtr--;
     }
 
+
+
     //Service Move Queue if not empty
-    if (!mqIsEmpty(moveq)) {
+    if ( uxQueueMessagesWaiting(xMoveQueue) > 0 ) {
         inMotion = 1;
         if ((currentMove == idleMove) || (getT1_ticks() >= moveExpire)) {
-            currentMove = mqPop(moveq);
+
+            xQueueReceive(xMoveQueue, currentMove, 0); //Receive with no wait
+            //currentMove = mqPop(xMoveQueue);
+
             //MOVE_SEG_LOOP_DECL only needs to appear once
             //This will set up queue looping
             if (currentMove->type == MOVE_SEG_LOOP_DECL) {
-                mqLoopingOnOff(1);
-                currentMove = mqPop(moveq);
+                //mqLoopingOnOff(1);
+                //TODO: figure out how to do move queue looping with FreeRTOS queues
+                //currentMove = mqPop(xMoveQueue);
+                xQueueReceive(xMoveQueue, currentMove, 0); //Receive with no wait
             }
             //Stop queue looping
             if (currentMove->type == MOVE_SEG_LOOP_CLEAR) {
-                mqLoopingOnOff(0);
-                currentMove = mqPop(moveq);
+                //mqLoopingOnOff(0);
+                //TODO: figure out how to do move queue looping with FreeRTOS queues
+                //currentMove = mqPop(xMoveQueue);
+                xQueueReceive(xMoveQueue, currentMove, 0); //Receive with no wait
             }
             //Remove all remaining items from the queue
             if (currentMove->type == MOVE_SEG_QFLUSH) {
-                while (mqPop(moveq)); //Terminate on NULL return, flushing queue
+                //Empty out the queue of all entries.
+                while ( xQueueReceive(xMoveQueue, currentMove, 0) );
                 currentMove = idleMove;
             }
             //TODO: handle NULL return from mqPop
@@ -432,4 +478,39 @@ void legCtrlOnOff(unsigned int num, unsigned char state) {
 
 void legCtrlSetGains(unsigned int num, int Kp, int Ki, int Kd, int Kaw, int ff) {
     pidSetGains(&(motor_pidObjs[num]), Kp, Ki, Kd, Kaw, ff);
+}
+
+static void setInitialOffset() {
+    //For IP2.5, it is expected that the offsets for idling motors should be about 511 ADC counts
+    // See wiki page on circuit for more details
+
+    int i;
+
+    //Offsets are expected to be ~511 counts for motor stationary.
+    long offsets[NUM_MOTOR_PIDS];
+
+    delay_ms(10);
+
+    //Accumulate 8 readings to average out
+    for (i = 0; i < 8; i++) {
+        offsets[0] += adcGetMotorA();
+        offsets[1] += adcGetMotorB();
+        Nop();
+        Nop();
+        delay_ms(2);
+    }
+
+    for(i = 0; i<NUM_MOTOR_PIDS; i++){
+        offsets[i] = offsets[i] >> 3; // fast div by 8
+        motor_pidObjs[i].inputOffset = offsets[i]; //store
+    }
+
+    Nop();
+    Nop();
+
+}
+
+int legCtrlGetInput(unsigned int channel){
+    int idx = channel - 1;
+    return motor_pidObjs[idx].input;
 }
