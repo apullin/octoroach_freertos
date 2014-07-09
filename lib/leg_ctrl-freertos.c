@@ -6,22 +6,22 @@
 //FreeRTOS includes
 #include "FreeRTOS.h"
 #include "task.h"
-#include "queue.h"
+//#include "queue.h"
 #include "semphr.h"
 
 //Library includes
 #include "leg_ctrl-freertos.h"
+#include "move_queue.h"
 #include "pid.h"
 #include "adc_pid.h"
 #include "pwm.h"
 #include "led.h"
 #include "adc.h"
+#include "settings.h"
 
 #include "math.h"
 #include <dsp.h>
 #include <stdlib.h> // for malloc
-
-
 
 //////////////////////////////////////////////////
 //////////      FreeRTOS config        ///////////
@@ -36,7 +36,9 @@
 int blinkCtr;   //Counter for blinking the red LED during motion
 pidObj motor_pidObjs[NUM_MOTOR_PIDS];   //PID container objects
 
-moveCmdT currentMove, idleMove;
+moveSegment_t currentMove, idleMove;
+moveCmdStruct moveBuffer; //Not a good solution; dedicated variable to recieve from the xMoveQueue
+//TODO: change moveSegment_t to not be pointer based, and properly leverage the FreeRTOS queues, making idling based on queue empty or not
 unsigned long currentMoveStart, moveExpire;
 
 //BEMF related variables; we store a history of the last 3 values,
@@ -69,52 +71,31 @@ static int max_pwm;
 //Global flag for wether or not the robot is in motion
 volatile char inMotion;
 
-
-
 //This is an option to force the PID outputs back to zero when there is no input.
 //This was an attempt to stop bugs w/ motor twitching, or controller wandering.
 //It may not be needed anymore.
 #define PID_ZEROING_ENABLE 1
 
-
-
 //////////////////////////////////////////////////
 ////////// Private function prototypes ///////////
 //////////////////////////////////////////////////
 static portTASK_FUNCTION_PROTO(vLegCtrlTask, pvParameters);       //FreeRTOS task, 1khz leg control
-static int medianFilter3(int*);
 
+static void setInitialOffset(unsigned int n);
 
-static void legCtrlServiceRoutine(void);  //To be installed with sysService
-//The following local functions are called by the service routine:
+//These are all smaller code blocks used by the vLegCtrlTask
 static void serviceMoveQueue(void);
 static void moveSynth();
 static void serviceMotionPID();
 static void updateBEMF();
 
 
-void vLegCtrlTask(void *pvParameters) { //FreeRTOS task
+//////////////////////////////////////////////////
+////////// Public function definitions ///////////
+//////////////////////////////////////////////////
+void legCtrlSetup(unsigned portBASE_TYPE uxPriority) {
 
-    portTickType xLastWakeTime;
-    xLastWakeTime = xTaskGetTickCount();
-
-    for (;;) { //Task loop
-
-        serviceMoveQueue();
-        moveSynth();         //TODO: port to synth module
-        serviceMotionPID();  //Update controllers
-
-        // Delay task in a periodic manner
-        vTaskDelayUntil(&xLastWakeTime, (LEG_CTRL_TASK_PERIOD_MS / portTICK_RATE_MS));
-
-    } // END of task loop
-}
-
-
-
-void legCtrlSetup() {
-
-    xMoveQueue = xQueueCreate( MOVE_QUEUE_SIZE, sizeof( moveCmdt ) );
+    xMoveQueue = moveQueueInit(MOVE_QUEUE_SIZE);
 
     //Get maximum & saturation values
     //The factor of 2 is a quirk of the MicroChip PWM module, rising AND falling edges of PWM are counted
@@ -178,8 +159,11 @@ void legCtrlSetup() {
         bemfHist[i][2] = 0;
     }
 
+    //Read a bunch of BEMF values and get what the stationary zero level should be
+    setInitialOffset(8); //accumulates 8 samples, 2ms delay each
+
     portBASE_TYPE xStatus;
-    
+   
     xStatus = xTaskCreate(vLegCtrlTask, /* Pointer to the function that implements the task. */
             (const char *) "Leg Controller Task", /* Text name for the task. This is to facilitate debugging. */
             240, /* Stack depth in words. */
@@ -189,8 +173,74 @@ void legCtrlSetup() {
 
 }
 
+
+void legCtrlSetInput(unsigned int num, int val) {
+    pidSetInput(&(motor_pidObjs[num]), val);
+}
+
+void legCtrlOnOff(unsigned int num, unsigned char state) {
+    motor_pidObjs[num].onoff = state;
+}
+
+void legCtrlSetGains(unsigned int num, int Kp, int Ki, int Kd, int Kaw, int ff) {
+    pidSetGains(&(motor_pidObjs[num]), Kp, Ki, Kd, Kaw, ff);
+}
+
+int legCtrlGetInput(unsigned int channel){
+    int idx = channel - 1;
+    return motor_pidObjs[idx].input;
+}
+
+//Poor implementation of a median filter for a 3-array of values
+int medianFilter3(int* a) {
+    int b[3] = {a[0], a[1], a[2]};
+    int temp;
+
+    //Implemented through 3 compare-exchange operations, increasing index
+    if (b[0] > b[1]) {
+        temp = b[1];
+        b[1] = b[0];
+        b[0] = temp;
+    }
+    if (a[0] > a[2]) {
+        temp = b[2];
+        b[2] = b[0];
+        b[0] = temp;
+    }
+    if (a[1] > a[2]) {
+        temp = b[2];
+        b[2] = b[1];
+        b[1] = temp;
+    }
+
+    return b[1];
+}
+
+
+
+//////////////////////////////////////////////////
+////////// Private function definitions //////////
+//////////////////////////////////////////////////
+
+void vLegCtrlTask(void *pvParameters) { //FreeRTOS task
+
+    portTickType xLastWakeTime;
+    xLastWakeTime = xTaskGetTickCount();
+
+    for (;;) { //Task loop
+
+        serviceMoveQueue();
+        moveSynth();         //TODO: port to synth module
+        serviceMotionPID();  //Update controllers
+
+        // Delay task in a periodic manner
+        vTaskDelayUntil(&xLastWakeTime, (LEG_CTRL_TASK_PERIOD_MS / portTICK_RATE_MS));
+
+    } // END of task loop
+}
+
 // Runs the PID controllers for the legs
-void serviceMotionPID() {
+static void serviceMotionPID() {
 
     //Apply steering mixing, without overwriting anything
     int presteer[2] = {motor_pidObjs[0].input, motor_pidObjs[1].input};
@@ -239,7 +289,7 @@ void serviceMotionPID() {
     } // end of for(j)
 }
 
-void updateBEMF() {
+static void updateBEMF() {
     //Back EMF measurements are made automatically by coordination of the ADC, PWM, and DMA.
 
     //This assignment here is arbitrary.
@@ -297,9 +347,9 @@ void updateBEMF() {
     //}
 }
 
-void serviceMoveQueue(void) {
+static void serviceMoveQueue(void) {
 
-    //Blink red LED when executing move program
+    //Blink red LED when executing move program, blinks at 5hz
     if (currentMove != idleMove) {
         inMotion = 1;
         if (blinkCtr == 0) {
@@ -309,38 +359,31 @@ void serviceMoveQueue(void) {
         blinkCtr--;
     }
 
-
-
     //Service Move Queue if not empty
-    if ( uxQueueMessagesWaiting(xMoveQueue) > 0 ) {
+    if ( !moveQueueIsEmpty(xMoveQueue) ) {
         inMotion = 1;
         if ((currentMove == idleMove) || (getT1_ticks() >= moveExpire)) {
-
-            xQueueReceive(xMoveQueue, currentMove, 0); //Receive with no wait
-            //currentMove = mqPop(xMoveQueue);
+             moveQueuePop(xMoveQueue, &moveBuffer);
+             currentMove = &moveBuffer;  //Set pointer
 
             //MOVE_SEG_LOOP_DECL only needs to appear once
             //This will set up queue looping
             if (currentMove->type == MOVE_SEG_LOOP_DECL) {
-                //mqLoopingOnOff(1);
-                //TODO: figure out how to do move queue looping with FreeRTOS queues
-                //currentMove = mqPop(xMoveQueue);
-                xQueueReceive(xMoveQueue, currentMove, 0); //Receive with no wait
+                moveQueueLoopingOnOff(1);           
+                moveQueuePop(xMoveQueue, &moveBuffer); //Fetch another right away
             }
             //Stop queue looping
             if (currentMove->type == MOVE_SEG_LOOP_CLEAR) {
-                //mqLoopingOnOff(0);
-                //TODO: figure out how to do move queue looping with FreeRTOS queues
-                //currentMove = mqPop(xMoveQueue);
-                xQueueReceive(xMoveQueue, currentMove, 0); //Receive with no wait
+                moveQueueLoopingOnOff(0);
+                moveQueuePop(xMoveQueue, &moveBuffer); //Fetch another right away
             }
             //Remove all remaining items from the queue
             if (currentMove->type == MOVE_SEG_QFLUSH) {
                 //Empty out the queue of all entries.
-                while ( xQueueReceive(xMoveQueue, currentMove, 0) );
+                moveQueueFlush(xMoveQueue);
                 currentMove = idleMove;
             }
-            //TODO: handle NULL return from mqPop
+            
             moveExpire = getT1_ticks() + currentMove->duration;
             currentMoveStart = getT1_ticks();
 
@@ -354,7 +397,7 @@ void serviceMoveQueue(void) {
             //Since we are labeling it as a "rate"
             steeringSetInput(currentMove->steeringRate);
 
-            //If we are no on an Idle move, turn on controllers
+            //If we are not on an Idle move, turn on controllers
             if (currentMove->type != MOVE_SEG_IDLE) {
                 motor_pidObjs[0].onoff = PID_ON;
                 motor_pidObjs[1].onoff = PID_ON;
@@ -441,46 +484,7 @@ static void moveSynth() {
 }
 
 
-
-//Poor implementation of a median filter for a 3-array of values
-
-int medianFilter3(int* a) {
-    int b[3] = {a[0], a[1], a[2]};
-    int temp;
-
-    //Implemented through 3 compare-exchange operations, increasing index
-    if (b[0] > b[1]) {
-        temp = b[1];
-        b[1] = b[0];
-        b[0] = temp;
-    }
-    if (a[0] > a[2]) {
-        temp = b[2];
-        b[2] = b[0];
-        b[0] = temp;
-    }
-    if (a[1] > a[2]) {
-        temp = b[2];
-        b[2] = b[1];
-        b[1] = temp;
-    }
-
-    return b[1];
-}
-
-void legCtrlSetInput(unsigned int num, int val) {
-    pidSetInput(&(motor_pidObjs[num]), val);
-}
-
-void legCtrlOnOff(unsigned int num, unsigned char state) {
-    motor_pidObjs[num].onoff = state;
-}
-
-void legCtrlSetGains(unsigned int num, int Kp, int Ki, int Kd, int Kaw, int ff) {
-    pidSetGains(&(motor_pidObjs[num]), Kp, Ki, Kd, Kaw, ff);
-}
-
-static void setInitialOffset() {
+static void setInitialOffset(unsigned int n) {
     //For IP2.5, it is expected that the offsets for idling motors should be about 511 ADC counts
     // See wiki page on circuit for more details
 
@@ -492,11 +496,9 @@ static void setInitialOffset() {
     delay_ms(10);
 
     //Accumulate 8 readings to average out
-    for (i = 0; i < 8; i++) {
+    for (i = 0; i < n; i++) {
         offsets[0] += adcGetMotorA();
         offsets[1] += adcGetMotorB();
-        Nop();
-        Nop();
         delay_ms(2);
     }
 
@@ -505,12 +507,4 @@ static void setInitialOffset() {
         motor_pidObjs[i].inputOffset = offsets[i]; //store
     }
 
-    Nop();
-    Nop();
-
-}
-
-int legCtrlGetInput(unsigned int channel){
-    int idx = channel - 1;
-    return motor_pidObjs[idx].input;
 }

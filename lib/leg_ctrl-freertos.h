@@ -34,9 +34,10 @@
 #define MOTOR_PID_SCALER 32
 #endif
 
-void legCtrlSetup();
+void legCtrlSetup(unsigned portBASE_TYPE uxPriority);
 void legCtrlSetInput(unsigned int num, int val);
 void legCtrlOnOff(unsigned int num, unsigned char state);
 void legCtrlSetGains(unsigned int num, int Kp, int Ki, int Kd, int Kaw, int ff);
+int medianFilter3(int*);
 
 #endif
