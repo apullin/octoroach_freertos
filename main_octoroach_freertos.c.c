@@ -56,9 +56,13 @@
 #include "settings.h"
 #include "sclock.h"
 
+//Module includes
+#include "imu_freertos.h"
+#include "telem-freertos.h"
+
 /* Task priorities. */
 #define mainIMU_TASK_PRIORITY                           ( tskIDLE_PRIORITY + 4 )
-
+#define mainTELEM_TASK_PRIORITY                         ( tskIDLE_PRIORITY + 3 )
 
 //Private function prototypes
 static void prvSetupHardware(void);
@@ -79,7 +83,10 @@ int main(void) {
     //////  Create tasks  //////
 
     //IMU task, runs at 1Khz
-    vIMUStartTask(mainIMU_TASK_PRIORITY);
+    imuSetup(mainIMU_TASK_PRIORITY);
+
+    //Telemetry recording task, runs at 1Khz
+    telemSetup(mainTELEM_TASK_PRIORITY);
 
     //Startup indicator cycle with LEDs
     prvStartupLights();
