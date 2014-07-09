@@ -8,10 +8,11 @@
 #ifndef IMU_H
 #define	IMU_H
 
-xTaskHandle imuGetTaskHandle(void);
-portBASE_TYPE vStarLegCtrlTask(void);
+void imuSetup(unsigned portBASE_TYPE uxPriority);
 
-///// Gyro
+xTaskHandle imuGetTaskHandle(void);
+
+///// Gyro /////
 int imuGetGyroXValue();
 int imuGetGyroYValue();
 int imuGetGyroZValue();
@@ -20,15 +21,19 @@ float imuGetGyroXValueDeg();
 float imuGetGyroYValueDeg();
 float imuGetGyroZValueDeg();
 
+///// XL /////
 int imuGetXLXValue();
 int imuGetXLYValue();
 int imuGetXLZValue();
 
+///// Moving average gyro /////
 int imuGetGyroZValueAvg();
 float imuGetGyroZValueAvgDeg();
 
+///// Integrated gyro /////
 float imuGetBodyZPositionDeg();
 
+///// IMU Task control /////
 void imuSuspend(void);
 void imuResume(void);
 
