@@ -18,6 +18,9 @@
 #include "led.h"
 #include "adc.h"
 #include "settings.h"
+#include "tih.h"
+#include "steering.h"
+#include "sclock.h"
 
 #include "math.h"
 #include <dsp.h>
@@ -258,7 +261,7 @@ static void serviceMotionPID() {
         //We are now measuring battery voltage directly via AN0,
         // so the input offset to each PID loop can actually be tracked, and needs
         // to be updated. This should compensate for battery voltage drooping over time.
-        motor_pidObjs[j].inputOffset = adcGetVBatt();
+        motor_pidObjs[j].inputOffset = adcGetVbatt();
 
         //pidobjs[0] : Left side
         //pidobjs[0] : Right side

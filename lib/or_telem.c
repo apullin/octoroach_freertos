@@ -2,10 +2,15 @@
 
 //or_telem.c , OctoRoACH specific telemetry packet format
 
+#include<xc.h>
+//FreeRTOS includes
+#include "FreeRTOS.h"
+#include "task.h"
+#include "queue.h"
+#include "semphr.h"
 
 #include "or_telem.h"
 
-#include <xc.h>
 #include "pid.h"
 #include "gyro.h"
 #include "xl.h"

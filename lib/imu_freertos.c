@@ -67,7 +67,7 @@ void imuSetup(unsigned portBASE_TYPE uxPriority) {
     mpuSetup();
 
     //Start FreeRTOS task
-    vStartIMUTask(unsigned portBASE_TYPE uxPriority);
+    vIMUStartTask(uxPriority);
 
 }
 

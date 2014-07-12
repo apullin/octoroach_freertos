@@ -42,4 +42,7 @@ int moveQueueGetSize(QueueHandle_t queue);
 
 void moveQueueLoopingOnOff(int onoff);
 
+void moveQueueFlush(QueueHandle_t queue);
+
+
 #endif // __MOVE_QUEUE_H

@@ -100,15 +100,6 @@ int main(void) {
 }
 
 
-unsigned long ulIdleCycleCount = 0UL;
-/* Idle hook functions MUST be called vApplicationIdleHook(), take no parameters,
-and return void. */
-void vApplicationIdleHook(void) {
-    /* This hook function does nothing but increment a counter. */
-    ulIdleCycleCount++;
-    Idle();  //dsPIC idle function; CPU core off, wakes on any interrupt
-}
-
 void prvSetupHardware(void){
     SetupClock();   //from imageproc-lib , config PLL
     SetupPorts();   //from imageproc-lib, set up LATn, TRISn, etc , requires __IMAGEPROC2
