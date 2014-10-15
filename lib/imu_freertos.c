@@ -52,7 +52,7 @@ static float lastBodyZPositionDeg = 0.0;
 //////////////////////////////////////////////////
 ////////// Private function prototypes ///////////
 //////////////////////////////////////////////////
-void vIMUStartTask( unsigned portBASE_TYPE uxPriority);
+portBASE_TYPE vStartIMUTask(unsigned portBASE_TYPE uxPriority);
 static portTASK_FUNCTION_PROTO(vIMUTask, pvParameters); //FreeRTOS task
 
 
@@ -67,8 +67,9 @@ void imuSetup(unsigned portBASE_TYPE uxPriority) {
     mpuSetup();
 
     //Start FreeRTOS task
-    vStartIMUTask(unsigned portBASE_TYPE uxPriority);
+    xStatus = vStartIMUTask(uxPriority);
 
+    return xStatus; 
 }
 
 xTaskHandle imuGetTaskHandle(void){

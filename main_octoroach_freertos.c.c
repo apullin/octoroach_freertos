@@ -59,10 +59,12 @@
 //Module includes
 #include "imu_freertos.h"
 #include "telem-freertos.h"
+#include "radio_freertos.h"
 
 /* Task priorities. */
 #define mainIMU_TASK_PRIORITY                           ( tskIDLE_PRIORITY + 4 )
 #define mainTELEM_TASK_PRIORITY                         ( tskIDLE_PRIORITY + 3 )
+#define mainRADIO_TASK_PRIORITY                         ( tskIDLE_PRIORITY + 2 )
 
 //Private function prototypes
 static void prvSetupHardware(void);
@@ -81,6 +83,9 @@ int main(void) {
     prvSetupHardware();
 
     //////  Create tasks  //////
+
+    //Radio
+    radioSetup(mainRADIO_TASK_PRIORITY);
 
     //IMU task, runs at 1Khz
     imuSetup(mainIMU_TASK_PRIORITY);

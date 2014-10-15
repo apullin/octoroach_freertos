@@ -47,18 +47,13 @@
         <itemPath>../imageproc-lib/mpu6000.c</itemPath>
         <itemPath>../imageproc-lib/mpu6000.h</itemPath>
       </logicalFolder>
-      <logicalFolder name="f2"
-                     displayName="imageproc-lib_freertos"
-                     projectFiles="true">
-      </logicalFolder>
       <logicalFolder name="f4" displayName="lib" projectFiles="true">
         <itemPath>lib/imu_freertos.c</itemPath>
         <itemPath>lib/spi_controller-freertos.c</itemPath>
         <itemPath>lib/blob.c</itemPath>
         <itemPath>lib/telem-freertos.c</itemPath>
         <itemPath>lib/or_telem.c</itemPath>
-      </logicalFolder>
-      <logicalFolder name="f3" displayName="octoroach-lib" projectFiles="true">
+        <itemPath>lib/radio_freertos.c</itemPath>
       </logicalFolder>
       <itemPath>main_octoroach_freertos.c.c</itemPath>
     </logicalFolder>

@@ -62,6 +62,8 @@ static DfmemGeometryStruct mem_geo;
 static portTASK_FUNCTION_PROTO(vTelemTask, pvParameters);       //FreeRTOS task, record telemetry into queue
 static portTASK_FUNCTION_PROTO(vTelemWriteTask, pvParameters); //FreeRTOS task, writes queue into dfmem queue at low priority
 
+portBASE_TYPE vStartTelemTasks( unsigned portBASE_TYPE uxPriority);
+
 static QueueHandle_t telemQueue;
 
 //////////////////////////////////////////////////
