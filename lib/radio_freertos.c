@@ -76,6 +76,8 @@
 #define RADIO_STATE_ACQ_TIME_MS         25
 #define RADIO_QUEUE_ACQ_TIME_MS         25
 
+#define radiotaskSTACK_SIZE             configMINIMAL_STACK_SIZE
+
 // =========== Static variables ===============================================
 // State information
 //static unsigned char is_ready = 0;
@@ -125,6 +127,13 @@ void radioSetup(unsigned int tx_queue_length, unsigned int rx_queue_length, port
     //TODO: Put here?
     //tx_queue = carrayCreate(tx_queue_length);
     //rx_queue = carrayCreate(rx_queue_length);
+    
+    //Setup Queues
+    xRadioMutex = xSemaphoreCreateMutex();
+    radioTXQueue = xQueueCreate(tx_queue_length, (unsigned portBASE_TYPE) sizeof ( MacPacketStruct));
+    radioRXQueue = xQueueCreate(rx_queue_length, (unsigned portBASE_TYPE) sizeof ( MacPacketStruct));
+    //Make sure mutex is available
+    xSemaphoreGive(xRadioMutex);
 
     status.state = STATE_IDLE;
     status.packets_sent = 0;
@@ -246,18 +255,18 @@ void radioSetWatchdogTime(unsigned int time) {
     watchdogProgress();
 }
 
-MacPacket radioDequeueRxPacket(MacPacket pkt, TickType_t delay)
+portBASE_TYPE radioDequeueRxPacket(MacPacket packet, TickType_t delay)
 {
 //    if ( !is_ready ) return NULL;
 
     //return (MacPacket)carrayPopTail(rx_queue);
 //    MacPacket packet;
     portBASE_TYPE xStatus;
-    xStatus = xQueueReceive(radioRXQueue, pkt,  delay);
+    xStatus = xQueueReceive(radioRXQueue, packet,  delay);
     return xStatus;
 }
 
-unsigned int radioEnqueueTxPacket(MacPacket packet, TickType_t delay) {
+portBASE_TYPE radioEnqueueTxPacket(MacPacket packet, TickType_t delay) {
 //    if(!is_ready) { return 0; }
     //return carrayAddTail(tx_queue, packet);
     portBASE_TYPE xStatus;
@@ -303,45 +312,68 @@ unsigned int radioGetRxQueueSize(void) {
 }
 
 void radioFlushQueues(void) {
-    MacPacket pkt;
+
+    portBASE_TYPE xStatus;
+    MacPacketStruct pkt;
 
     while (!radioRxQueueEmpty()) {
-        pkt = (MacPacket)xQueueReceive(radioRXQueue, &pkt, 0);
-        radioReturnPacket(pkt);
+        xStatus = xQueueReceive(radioRXQueue, &pkt, 0);
+//        radioReturnPacket(pkt);
     }
     while (!radioTxQueueEmpty()) {
-        pkt = (MacPacket)xQueueReceive(radioTXQueue, &pkt, 0);
-        radioReturnPacket(pkt);
+        xStatus = xQueueReceive(radioTXQueue, &pkt, 0);
+//        radioReturnPacket(pkt);
     }
 }
 
 MacPacket radioRequestPacket(unsigned int data_size) {
 
-    MacPacket packet;
+    MacPacket pkt;
 
-    packet = ppoolRequestFullPacket(data_size);
-    if(packet == NULL) { return NULL; }
+//    packet = ppoolRequestFullPacket(data_size);
+//    if(packet == NULL) { return NULL; }
 
-    macSetSrc(packet, configuration.address.pan_id, configuration.address.address);
-    macSetDestPan(packet, configuration.address.pan_id);
+    pkt = macCreateDataPacket();
+    if(pkt == NULL){
+        return NULL;
+    }
 
-    return packet;
+    pkt->payload = payCreateEmpty(data_size);
+
+    if(pkt->payload == NULL){
+        vPortFree(pkt); //Free base MacPacketStruct on heap if we can't get a payload
+        return NULL;
+    }
+
+    //TODO: Do these params need to be set here, or are they set above on creation?
+    macSetSrc(pkt, configuration.address.pan_id, configuration.address.address);
+    macSetDestPan(pkt, configuration.address.pan_id);
+
+    return pkt;
 
 }
 
-MacPacket radioCreatePacket(unsigned int data_size) {
-    return NULL;
+//MacPacket radioCreatePacket(unsigned int data_size) {
+//    return NULL;
+//}
+
+void radioReturnPacket(MacPacket packet) {
+//    return ppoolReturnFullPacket(packet);
+    if(packet != NULL){
+        if(packet->payload != NULL){
+            vPortFree(packet->payload);
+        }
+        vPortFree(packet);
+    }
+
 }
 
-unsigned int radioReturnPacket(MacPacket packet) {
-    return ppoolReturnFullPacket(packet);
-}
-
-void radioDeletePacket(MacPacket packet) {
-    return;
-}
+//void radioDeletePacket(MacPacket packet) {
+//    return;
+//}
 
 // The Big Function
+// This function will consume the TX queue, when the radio is avaialble to do so.
 void radioProcess(void) {
 
     unsigned long currentTime;
@@ -384,34 +416,42 @@ unsigned char radioSendData (unsigned int dest_addr, unsigned char status,
                              unsigned char type, unsigned int datalen,
                              unsigned char* dataptr, unsigned char fast_fail)
 {
-    MacPacket packet;
-    Payload pld;
+    
+    MacPacket pkt;
 
-    portBASE_TYPE xStatus;
-
-    packet = radioRequestPacket(datalen);
-    if( packet == NULL ){
+    pkt = radioRequestPacket(datalen); //creates packet and correct size payload on heap
+    if( pkt == NULL ){
         if (fast_fail) {
             return EXIT_FAILURE;
         } else {   
-            while ( packet == NULL ) {
+            while ( pkt == NULL ) {
                radioProcess();
-               packet = radioRequestPacket(datalen); 
+               pkt = radioRequestPacket(datalen);
             }
         }
     }
-    macSetDestAddr(packet, dest_addr);          // SRC and PAN already set
+    macSetDestAddr(pkt, dest_addr);          // SRC and PAN already set
 
-    pld = macGetPayload(packet);
+    Payload pld; //just a point, for convenience
+    pld = macGetPayload(pkt);
     paySetData(pld, datalen, (unsigned char*) dataptr);
     paySetType(pld, type);
     paySetStatus(pld, status);
 
+    portBASE_TYPE xStatus;
+
     if (fast_fail){
-        xStatus = radioEnqueueTxPacket(packet, 0);
+        xStatus = radioEnqueueTxPacket(pkt, 0);
+        if(xStatus == errQUEUE_FULL){
+            radioReturnPacket(pkt); //delete MacPacket on heap, and payload on heap
+        }
     } else {
-        xStatus = radioEnqueueTxPacket(packet, portMAX_DELAY);
+        xStatus = radioEnqueueTxPacket(pkt, portMAX_DELAY);
     }
+
+    //The MacPacket was allocated on the heap, but now exists in the queue.
+    //The one on the heap must be deleted. The payload data will reamin in the heap.
+    vPortFree(pkt);
 
     return EXIT_SUCCESS;
 }
@@ -654,7 +694,8 @@ static unsigned int radioBeginTransition(void) {
  */
 static void radioProcessTx(void) {
 
-    MacPacket packet;
+    MacPacketStruct packet;
+    MacPacket pktPtr = &packet;
     portBASE_TYPE xStatus;
 
 //    packet = (MacPacket) carrayPeekHead(tx_queue); // Find an outgoing packet
@@ -666,11 +707,12 @@ static void radioProcessTx(void) {
     // State should be STATE_TX_IDLE upon entering function
     status.state = STATE_TX_BUSY;    // Update state
 
-    macSetSeqNum(packet, status.sequence_number++); // Set packet sequence number
+    macSetSeqNum(pktPtr, status.sequence_number++); // Set packet sequence number
 
-    trxWriteFrameBuffer(packet); // Write packet to transmitter and send
+    trxWriteFrameBuffer(pktPtr); // Write packet to transmitter and send
     trxBeginTransmission();
 
+    vPortFree(packet.payload); //payload was allocated on the heap
 }
 
 /**
@@ -690,6 +732,12 @@ static void radioProcessRx(void) {
 
     trxReadFrameBuffer(packet); // Retrieve frame from transceiver
     packet->timestamp = sclockGetTime(); // Mark local time of reception
+
+    portBASE_TYPE xStatus;
+
+    xStatus = xQueueSendToBack(radioRXQueue, packet,  portMAX_DELAY);
+
+    vPortFree(packet); //MacPacketStruct now copied into queue, pointing to payload on heap
 
     xSemaphoreGive(xRadioMutex);
 
@@ -724,7 +772,7 @@ portBASE_TYPE vStartRadioTask( unsigned portBASE_TYPE uxPriority){
             radiotaskSTACK_SIZE,            /* Stack depth in words. */
             NULL,                           /* We are not using the task parameter. */
             uxPriority,                     /* This task will run at priority 1. */
-            &xImuTaskHandle);               /* We are not going to use the task handle. */
+            NULL);
 
     return xStatus;
 }
@@ -733,14 +781,7 @@ portBASE_TYPE vStartRadioTask( unsigned portBASE_TYPE uxPriority){
 static portTASK_FUNCTION(vRadioTask, pvParameters) {
     portTickType xLastWakeTime;
     xLastWakeTime = xTaskGetTickCount();
-    portBASE_TYPE xStatus;
-
-    //Setup Queues
-    xRadioMutex = xSemaphoreCreateMutex();
-    radioTXQueue = xQueueCreate(tx_queue_length, (unsigned portBASE_TYPE) sizeof ( MacPacket));
-    radioRXQueue = xQueueCreate(rx_queue_length, (unsigned portBASE_TYPE) sizeof ( MacPacket));
-    //Make sure mutex is available
-    xSemaphoreGive(xRadioMutex);
+//    portBASE_TYPE xStatus;
 
     for (;;) {
         
@@ -748,18 +789,4 @@ static portTASK_FUNCTION(vRadioTask, pvParameters) {
         
         taskYIELD();
     }
-}
-
-
-portBASE_TYPE vStartRadioTask( unsigned portBASE_TYPE uxPriority){
-    portBASE_TYPE xStatus;
-
-    xStatus = xTaskCreate(vRadioTask, /* Pointer to the function that implements the task. */
-            (const char *) "Radio Task", /* Text name for the task. This is to facilitate debugging. */
-            240, /* Stack depth in words. */
-            NULL, /* We are not using the task parameter. */
-            uxPriority, /* This task will run at priority 1. */
-            &xRadioTaskHandle); /* We are not going to use the task handle. */
-
-    return xStatus;
 }

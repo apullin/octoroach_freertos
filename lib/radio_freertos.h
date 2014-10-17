@@ -117,7 +117,7 @@ void radioSetWatchdogTime(unsigned int time);
 
 // Queue interface
 portBASE_TYPE radioEnqueueTxPacket(MacPacket packet, TickType_t delay);
-portBASE_TYPE radioDequeueRxPacket(MacPacket pkt, TickType_t delay);
+portBASE_TYPE radioDequeueRxPacket(MacPacket packet, TickType_t delay);
 
 unsigned char radioSendData (unsigned int dest_addr, unsigned char status,
                              unsigned char type, unsigned int datalen,
@@ -145,7 +145,7 @@ void radioProcess(void);
 // Request a packet + payload from the preinitialized pool
 MacPacket radioRequestPacket(unsigned int data_size);
 // Return a packet + payload to the preinitialized pool
-unsigned int radioReturnPacket(MacPacket packet);
+void radioReturnPacket(MacPacket packet);
 
 MacPacket __attribute__ ((deprecated)) radioCreatePacket(unsigned int data_size);
 void __attribute__ ((deprecated)) radioDeletePacket(MacPacket packet);
