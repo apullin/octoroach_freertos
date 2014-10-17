@@ -115,7 +115,7 @@ static unsigned int radioSetStateOff(void);
 // =========== Public functions ===============================================
 
 // Initialize radio software and hardware
-void radioSetup(unsigned int tx_queue_length, unsigned int rx_queue_length, portBASE_TYPE uxPriority) {
+void radioSetup(unsigned int rx_queue_length, unsigned int tx_queue_length, portBASE_TYPE uxPriority) {
 
     RadioConfiguration conf;
 

@@ -18,14 +18,8 @@
 //Hard-coded destination address, must match basestation or XBee addr
 #define RADIO_DST_ADDR		0x2051
 
-#define RADIO_RXPQ_MAX_SIZE 	8
-#define RADIO_TXPQ_MAX_SIZE	8
-
-/////// System Service settings ///////
-#define SYS_SERVICE_T1 // For legCtrl, hall
-#define SYS_SERVICE_T4 // For IMU, 300Hz
-#define SYS_SERVICE_T5 // For telemetry
-#define SYS_SERVICE_T6 // For steerubg
+#define RADIO_RX_QUEUE_MAX_SIZE 	8
+#define RADIO_TX_QUEUE_MAX_SIZE         8
 
 /////// Configuration options ///////
 //Configure project-wide for Hall Sensor operation

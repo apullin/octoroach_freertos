@@ -26,7 +26,7 @@
 //////////      FreeRTOS config        ///////////
 //////////////////////////////////////////////////
 #define TELEM_TASK_PERIOD_MS      1
-#define TELEM_QUEUE_SIZE          4
+#define TELEM_QUEUE_SIZE          87
 
 //////////////////////////////////////////////////
 //////////      Private variables      ///////////
@@ -134,7 +134,9 @@ void telemReadbackSamples(unsigned long numSamples) {
 
 void telemSendDataDelay(telemStruct_t* sample, int delaytime_ms) {
     //radioSendData(RADIO_DST_ADDR, 0, CMD_SPECIAL_TELEMETRY, telemPacketSize, (unsigned char *)sample, 0);
-    //delay_ms(delaytime_ms); // allow radio transmission time
+#define CMD_SPECIAL_TELEMETRY 0 //placeholder for now, to test compile; avoids
+    radioSendData(RADIO_DST_ADDR, 0, CMD_SPECIAL_TELEMETRY, telemPacketSize, (unsigned char *)sample, 0);
+    delay_ms(delaytime_ms); // allow radio transmission time
 }
 
 
@@ -234,7 +236,8 @@ void telemSetStartTime(void) {
 
 //This task will only recieve telemetry packets from a queue and write them to the dfmem.
 //This decouples the telemetry recording from the writing to dfmem.
-void vTelemWriteTask(void *pvParameters) { //FreeRTOS task
+//void vTelemWriteTask(void *pvParameters) { //FreeRTOS task
+static portTASK_FUNCTION(vTelemWriteTask, pvParameters) { //FreeRTOS task
 
     telemStruct_t data;
     portBASE_TYPE xStatus;
@@ -248,7 +251,8 @@ void vTelemWriteTask(void *pvParameters) { //FreeRTOS task
 }
 
 
-void vTelemTask(void *pvParameters) { //FreeRTOS task
+//void vTelemTask(void *pvParameters) { //FreeRTOS task
+static portTASK_FUNCTION(vTelemTask, pvParameters) { //FreeRTOS task
 
     telemStruct_t sample;
     //portBASE_TYPE xStatus;

@@ -3,18 +3,31 @@
 //or_telem.c , OctoRoACH specific telemetry packet format
 
 
+#include <xc.h>
+//FreeRTOS includes
+#include "FreeRTOS.h"
+#include "task.h"
+
+//Module include
 #include "or_telem.h"
+
+//Library includes
+#include "utils.h"
+#include "init_default.h"
+#include "radio_freertos.h"
+#include "mac_packet.h"
+#include "sclock.h"
+#include "timer.h"
+#include "ppool.h"
 
 #include <xc.h>
 #include "pid.h"
 #include "gyro.h"
 #include "xl.h"
 #include "ams-enc.h"
-#include "imu.h"
+#include "imu_freertos.h"
 #include "leg_ctrl.h"
-#include "tail_ctrl.h"
 #include "adc_pid.h"
-#include "tail_ctrl.h"
 #include "tih.h"
 #include "steering.h"
 
@@ -29,8 +42,8 @@ void orTelemGetData(unsigned char* ptr) {
     orTelemStruct_t* tptr;
     tptr = (orTelemStruct_t*) ptr;
  
-    tptr->inputL = legCtrlGetInput(1);
-    tptr->inputR = legCtrlGetInput(2);
+//    tptr->inputL = legCtrlGetInput(1); //TODO: Temporarily removed while porting
+//    tptr->inputR = legCtrlGetInput(2); //TODO: Temporarily removed while porting
     tptr->dcA = tiHGetSignedDC(1);
     tptr->dcB = tiHGetSignedDC(2);
     tptr->dcC = tiHGetSignedDC(3);
@@ -46,8 +59,8 @@ void orTelemGetData(unsigned char* ptr) {
     tptr->bemfB = adcGetMotorB();
     tptr->bemfC = adcGetMotorC();
     tptr->bemfD = adcGetMotorD();
-    tptr->steerIn = steeringGetInput();
-    tptr->steerOut = steeringGetInput();
+//    tptr->steerIn = steeringGetInput(); //TODO: Temporarily removed while porting
+//    tptr->steerOut = steeringGetInput(); //TODO: Temporarily removed while porting
     tptr->Vbatt = adcGetVbatt();
     tptr->yawAngle = imuGetBodyZPositionDeg();
 

@@ -20,7 +20,7 @@
 #include "dfilter_avg.h"
 #include "mpu6000.h"
 
-#include "imu.h"
+#include "imu_freertos.h"
 #include <stdlib.h>
 
 //////////////////////////////////////////////////
@@ -60,7 +60,7 @@ static portTASK_FUNCTION_PROTO(vIMUTask, pvParameters); //FreeRTOS task
 ////////// Public function definitions ///////////
 //////////////////////////////////////////////////
 
-void imuSetup(unsigned portBASE_TYPE uxPriority) {
+portBASE_TYPE imuSetup(portBASE_TYPE uxPriority) {
     portBASE_TYPE xStatus;
 
     //Chip config and SPI bus setup

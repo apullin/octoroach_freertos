@@ -8,7 +8,7 @@
 #ifndef IMU_H
 #define	IMU_H
 
-void imuSetup(unsigned portBASE_TYPE uxPriority);
+portBASE_TYPE imuSetup(portBASE_TYPE uxPriority);
 
 xTaskHandle imuGetTaskHandle(void);
 

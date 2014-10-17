@@ -97,8 +97,8 @@ static void setupDMASet2(void);
 // =========== Static Variables ===============================================
 
 /** Interrupt handlers */
-//static SpicIrqHandler int_handler_ch1[1];
-//static SpicIrqHandler int_handler_ch2[2];
+static SpicIrqHandler int_handler_ch1[1];
+static SpicIrqHandler int_handler_ch2[2];
 
 /** Port configurations */
 static unsigned int spicon_ch1[1];
@@ -134,6 +134,19 @@ void spicSetupChannel2(unsigned char cs, unsigned int spiCon1) {
     setupDMASet2();
     spicon_ch2[cs] = spiCon1;           // Remember SPI config
     //spi_port_ch2_reset();               // Initialize status
+}
+
+void spic1SetCallback(unsigned char cs, SpicIrqHandler handler) {
+
+    int_handler_ch1[cs] = handler;
+
+}
+
+
+void spic2SetCallback(unsigned char cs, SpicIrqHandler handler) {
+
+    int_handler_ch2[cs] = handler;
+
 }
 
 int spic1BeginTransaction(unsigned char cs) {
@@ -375,7 +388,7 @@ unsigned int spicReadBuffer(unsigned int channel, unsigned int len, QueueHandle_
     
 }
 
-/*
+
 unsigned int spic2ReadBuffer(unsigned int len, unsigned char *buff) {
 
     // Make sure requested length is in range
@@ -386,7 +399,7 @@ unsigned int spic2ReadBuffer(unsigned int len, unsigned char *buff) {
     memcpy(buff, spic2_rx_buff, len);   // Read DMA buffer contents into buffer
     return len;
 }
-*/
+
 
 // =========== Private Functions ==============================================
 // TODO: Check for DMA error codes and return appropriate interrupt cause

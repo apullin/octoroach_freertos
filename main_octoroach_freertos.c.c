@@ -76,16 +76,15 @@ static void prvSetupHardware(void);
 static void prvSetupHardware(void);
 void prvStartupLights(void);
 
-unsigned long ulIdleCycleCount = 0UL;
-
 int main(void) {
     /* Perform any hardware setup necessary. */
-    prvSetupHardware();
-
-    //////  Create tasks  //////
+    prvSetupHardware();  //Basic board init
 
     //Radio
-    radioSetup(mainRADIO_TASK_PRIORITY);
+    radioSetup(RADIO_RX_QUEUE_MAX_SIZE, RADIO_TX_QUEUE_MAX_SIZE, mainRADIO_TASK_PRIORITY);
+    radioSetChannel(RADIO_CHANNEL);
+    radioSetSrcPanID(RADIO_PAN_ID);
+    radioSetSrcAddr(RADIO_SRC_ADDR);
 
     //IMU task, runs at 1Khz
     imuSetup(mainIMU_TASK_PRIORITY);
@@ -112,6 +111,8 @@ void vApplicationIdleHook(void) {
     /* This hook function does nothing but increment a counter. */
     ulIdleCycleCount++;
     Idle();  //dsPIC idle function; CPU core off, wakes on any interrupt
+    //portSWITCH_CONTEXT();
+    taskYIELD();  //TODO: Unclear if this is needed?
 }
 
 void prvSetupHardware(void){
@@ -121,15 +122,7 @@ void prvSetupHardware(void){
     sclockSetup();
 }
 
-/* Idle hook functions MUST be called vApplicationIdleHook(), take no parameters,
-and return void. */
-void vApplicationIdleHook(void) {
-    /* This hook function does nothing but increment a counter. */
-    ulIdleCycleCount++;
-    Idle();  //dsPIC idle function; CPU core off, wakes on any interrupt
-    //portSWITCH_CONTEXT();
-    taskYIELD();
-}
+
 
 void prvStartupLights(void) {
     int i;
