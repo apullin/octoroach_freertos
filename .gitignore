@@ -1,6 +1,18 @@
-/*.o
+# Python bytecode
+*.pyc
+
+# Build output
+*.o
+*.hex
+*.map
+*.cof
 build
 dist
+
+# Version string should not be in SCM
+version-string.h
+
+# IDE files that do not go into SCM
 nbproject/Makefile-default.mk
 nbproject/Makefile-genesis.properties
 nbproject/Makefile-impl.mk
