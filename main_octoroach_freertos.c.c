@@ -64,7 +64,8 @@
 /* Task priorities. */
 #define mainIMU_TASK_PRIORITY                           ( tskIDLE_PRIORITY + 4 )
 #define mainTELEM_TASK_PRIORITY                         ( tskIDLE_PRIORITY + 3 )
-#define mainRADIO_TASK_PRIORITY                         ( tskIDLE_PRIORITY + 2 )
+#define mainRADIO_TASK_PRIORITY                         ( tskIDLE_PRIORITY + 1 )
+#define mainRADIOTEST_TASK_PRIORITY                     ( tskIDLE_PRIORITY + 2 )
 
 //Private function prototypes
 static void prvSetupHardware(void);
@@ -75,6 +76,9 @@ static void prvSetupHardware(void);
 //Private function prototypes
 static void prvSetupHardware(void);
 void prvStartupLights(void);
+
+
+void radioTestSetup( unsigned portBASE_TYPE uxPriority);
 
 int main(void) {
     /* Perform any hardware setup necessary. */
@@ -87,13 +91,17 @@ int main(void) {
     radioSetSrcAddr(RADIO_SRC_ADDR);
 
     //IMU task, runs at 1Khz
-    imuSetup(mainIMU_TASK_PRIORITY);
+//    imuSetup(mainIMU_TASK_PRIORITY);
 
     //Telemetry recording task, runs at 1Khz
-    telemSetup(mainTELEM_TASK_PRIORITY);
+//    dfmemSetup();
+//    telemSetup(mainTELEM_TASK_PRIORITY);
 
     //Startup indicator cycle with LEDs
     prvStartupLights();
+
+    //Test that sends WHOAMI's and ECHO's at 2Hz
+    radioTestSetup(mainRADIOTEST_TASK_PRIORITY);
 
     /* Start the created tasks running. */
     vTaskStartScheduler();
@@ -134,5 +142,54 @@ void prvStartupLights(void) {
         delay_ms(30);
         LED_YELLOW = ~LED_YELLOW;
         delay_ms(30);
+    }
+}
+
+///////////// Just for testing below here! //////////////////
+
+void radioTestSetup( unsigned portBASE_TYPE uxPriority);
+static portTASK_FUNCTION_PROTO(vRadioTestTask, pvParameters); //FreeRTOS task
+#include "cmd.h"
+#include "version.h"
+#include "string.h"
+
+void radioTestSetup( unsigned portBASE_TYPE uxPriority){
+    portBASE_TYPE xStatus;
+
+    xStatus = xTaskCreate(vRadioTestTask, /* Pointer to the function that implements the task. */
+            (const char *) "Radio Test Task", /* Text name for the task. This is to facilitate debugging. */
+            240, /* Stack depth in words. */
+            NULL, /* We are not using the task parameter. */
+            uxPriority, /* This task will run at priority 1. */
+            NULL); /* We are not going to use the task handle. */
+
+//    return xStatus;
+}
+
+static portTASK_FUNCTION(vRadioTestTask, pvParameters){
+    portTickType xLastWakeTime;
+    xLastWakeTime = xTaskGetTickCount();
+    portBASE_TYPE xStatus;
+
+    static char echoMsg[] = "Echo Test from FreeRTOS";
+    char* verstr = versionGetString();
+    int verlen = strlen(verstr);
+
+    for (;;) {
+        //TODO: Is yielding neccesary here?
+        // Delay task in a periodic manner
+
+        //Send WHOAMI packet
+        radioSendData(RADIO_DST_ADDR, 0, CMD_WHO_AM_I, verlen, (unsigned char*)verstr, 0);
+        LED_YELLOW = ~LED_YELLOW;
+        //Delay 500ms
+        vTaskDelayUntil(&xLastWakeTime, (500 / portTICK_RATE_MS));
+        //Send ECHO packet
+        radioSendData(RADIO_DST_ADDR, 0, CMD_ECHO, strlen(echoMsg), (unsigned char*)echoMsg, 0);
+        LED_YELLOW = ~LED_YELLOW;
+        //Delay 500ms
+        vTaskDelayUntil(&xLastWakeTime, (500 / portTICK_RATE_MS));
+
+        taskYIELD();
     }
 }

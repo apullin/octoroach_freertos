@@ -49,7 +49,7 @@
 #include "semphr.h"
 //Library includes
 #include "spi_controller-freertos.h"
-#include "spi.h"
+#include "spi.h"    //Microchip periphal library include
 #include "timer.h"
 #include "dma.h"
 #include "init_default.h"
@@ -108,7 +108,7 @@ static unsigned int spicon_ch2[2];
 static SemaphoreHandle_t xSPI_CHAN1_Mutex;
 static SemaphoreHandle_t xSPI_CHAN2_Mutex;
 
-static portTASK_FUNCTION_PROTO(vSPITask, pvParameters);
+//static portTASK_FUNCTION_PROTO(vSPITask, pvParameters);
 
 /** Current port chip select */
 static unsigned char port_cs_line[SPIC_NUM_PORTS];
@@ -127,13 +127,27 @@ void spicSetupChannel1(unsigned char cs, unsigned int spiCon1) {
 
     setupDMASet1();                     // Set up DMA channels
     spicon_ch1[cs] = spiCon1;           // Remember SPI config
+    
+    //FreeRTOS mutex must be created
+    //TODO: Should there be an SPI task where this & other stuff is handled?
+    if(xSPI_CHAN1_Mutex == NULL){
+        xSPI_CHAN1_Mutex = xSemaphoreCreateMutex();
+    }
+    xSemaphoreGive(xSPI_CHAN1_Mutex);
 }
 
 void spicSetupChannel2(unsigned char cs, unsigned int spiCon1) {
 
     setupDMASet2();
     spicon_ch2[cs] = spiCon1;           // Remember SPI config
-    //spi_port_ch2_reset();               // Initialize status
+//    spi_port_ch2_reset();               // Initialize status
+    
+    //FreeRTOS mutex must be created
+    //TODO: Should there be an SPI task where this & other stuff is handled?
+    if(xSPI_CHAN2_Mutex == NULL){
+        xSPI_CHAN2_Mutex = xSemaphoreCreateMutex();
+    }
+    xSemaphoreGive(xSPI_CHAN2_Mutex);
 }
 
 void spic1SetCallback(unsigned char cs, SpicIrqHandler handler) {
@@ -200,13 +214,13 @@ void spic1EndTransaction(void) {
 
     // Only one CS line
     SPI1_CS = SPI_CS_IDLE;  // Idle chip select after freeing since may cause irq
-    xSemaphoreGiveFromISR(xSPI_CHANNEL_1, &xHigherPriorityTaskWoken);
+    xSemaphoreGive(xSPI_CHAN1_Mutex);
 
-    if (xHigherPriorityTaskWoken != pdFALSE) {
+//    if (xHigherPriorityTaskWoken != pdFALSE) {
         // We can force a context switch here.  Context switching from an
         // ISR uses port specific syntax.
-        taskYIELD();
-    }
+//        taskYIELD();
+//    }
 
 }
 
@@ -218,13 +232,13 @@ void spic2EndTransaction(void) {
     if (port_cs_line[1] == 1)
       SPI2_CS2 = SPI_CS_IDLE;  // Idle chip select
 
-    xSemaphoreGiveFromISR(xSPI_CHANNEL_2, &xHigherPriorityTaskWoken);
+    xSemaphoreGive(xSPI_CHAN2_Mutex);
 
-    if (xHigherPriorityTaskWoken != pdFALSE) {
+//    if (xHigherPriorityTaskWoken != pdFALSE) {
         // We can force a context switch here.  Context switching from an
         // ISR uses port specific syntax.
-        taskYIELD();
-    }
+//        taskYIELD();
+//    }
     
 }
 
@@ -319,8 +333,8 @@ unsigned int spic1MassTransmit(unsigned int len, unsigned char *buff, unsigned i
         SPIC1_DMAW_CONbits.NULLW = 1;
     }
 
-    SPIC1_DMAR_CNT = len;   // Set number of bytes to send
-    SPIC1_DMAW_CNT = len;
+    SPIC1_DMAR_CNT = len - 1;   // Set number of bytes to send
+    SPIC1_DMAW_CNT = len - 1;
     SPIC1_DMAR_CONbits.CHEN = 1;    // Begin transmission
     SPIC1_DMAW_CONbits.CHEN = 1;
     SPIC1_DMAW_REQbits.FORCE = 1;
@@ -349,8 +363,8 @@ unsigned int spic2MassTransmit(unsigned int len, unsigned char *buff, unsigned i
         SPIC2_DMAW_CONbits.NULLW = 1;
     }
 
-    SPIC2_DMAR_CNT = len;   // Set number of bytes to send
-    SPIC2_DMAW_CNT = len;
+    SPIC2_DMAR_CNT = len - 1;   // Set number of bytes to send
+    SPIC2_DMAW_CNT = len - 1;
     SPIC2_DMAR_CONbits.CHEN = 1;    // Begin transmission
     SPIC2_DMAW_CONbits.CHEN = 1;
     SPIC2_DMAW_REQbits.FORCE = 1;
@@ -358,36 +372,17 @@ unsigned int spic2MassTransmit(unsigned int len, unsigned char *buff, unsigned i
 
 }
 
-unsigned int spicReadBuffer(unsigned int channel, unsigned int len, QueueHandle_t recvQueue) {
-
-    Blob_t blob;
-    unsigned int maxLength;
-    
-    if( channel == 1){
-        maxLength = SPIC1_RX_BUFF_LEN;
-        blob.data = spic1_rx_buff;
-    }
-    else if (channel ==2){
-        maxLength = SPIC2_RX_BUFF_LEN;
-        blob.data = spic2_rx_buff;
-    }
+unsigned int spic1ReadBuffer(unsigned int len, unsigned char *buff) {
 
     // Make sure requested length is in range
-    if(len > maxLength) {
-        len = maxLength;
+    if(len > SPIC1_RX_BUFF_LEN) {
+        len = SPIC1_RX_BUFF_LEN;
     }
-    
-    //Set corrected length
-    blob.length = len;
-    
-    portBASE_TYPE xStatus;
-    xStatus = xQueueSendToBack( recvQueue, &blob, portMAX_DELAY );
 
-    //memcpy(buff, spic1_rx_buff, len);   // Read DMA buffer contents into buffer
+    memcpy(buff, spic1_rx_buff, len);   // Read DMA buffer contents into buffer
     return len;
-    
-}
 
+}
 
 unsigned int spic2ReadBuffer(unsigned int len, unsigned char *buff) {
 
@@ -543,15 +538,6 @@ static void setupDMASet2 (void)
     _DMA5IF  = 0;   // Clear DMA interrupt
 }
 
-
-portBASE_TYPE spic2BlockingWaitDMAFinish(TickType_t timeout){
-    portBASE_TYPE xStatus;
-    //Will attempt to take the semaphore, which should already be unavaialble
-    xSemaphoreTake(xSPI_CHAN2_Mutex, timeout);
-    xStatus = xSemaphoreGive(xSPI_CHAN2_Mutex);
-    return xStatus;
-}
-
 void vSPIStartTask(unsigned portBASE_TYPE uxPriority) {
     //Peripheral setup, including DMA
     //SetupUART1();
@@ -562,8 +548,8 @@ void vSPIStartTask(unsigned portBASE_TYPE uxPriority) {
     //serialTXBlobQueue = xQueueCreate(UART_TX_QUEUE_SIZE, (unsigned portBASE_TYPE) sizeof ( Blob_t));
     //serialRXCharQueue = xQueueCreate(UART_RX_QUEUE_SIZE, (unsigned portBASE_TYPE) sizeof ( signed char));
 
-    xSPI_CHAN1_Mutex = xSemaphoreCreateMutex();
-    xSPI_CHAN2_Mutex = xSemaphoreCreateMutex();
+//    xSPI_CHAN1_Mutex = xSemaphoreCreateMutex();
+//    xSPI_CHAN2_Mutex = xSemaphoreCreateMutex();
 
     //Create task
     //TODO: Should we two separate tasks, one for RX, one for TX?
@@ -573,6 +559,7 @@ void vSPIStartTask(unsigned portBASE_TYPE uxPriority) {
     //ConfigIntUART1( UART_RX_INT_EN & UART_RX_INT_PR4);
 }
 
+/*
 static portTASK_FUNCTION(vSPITask, pvParameters) {
     portTickType xLastWakeTime;
     xLastWakeTime = xTaskGetTickCount();
@@ -583,3 +570,4 @@ static portTASK_FUNCTION(vSPITask, pvParameters) {
         //taskYIELD();
     }
 }
+ */

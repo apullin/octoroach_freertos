@@ -15,11 +15,10 @@
 #include "radio.h"
 #include "at86rf231_driver.h"
 #include "sclock.h"
-#include "sys_service.h"
 //#include "cmd.h"
 
 #include <string.h> //for memcpy
-#include "debugpins.h"
+//#include "debugpins.h"
 
 
 //////////////////////////////////////////////////

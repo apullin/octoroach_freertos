@@ -37,6 +37,8 @@
 #ifndef __RADIO_H
 #define __RADIO_H
 
+#include "FreeRTOS.h"
+#include "task.h"
 
 #include "mac_packet.h"
 

@@ -58,8 +58,8 @@
  *  consume too much processor time.
  */
 
-#ifndef __SPI_CONTROLLER_FREERTOS_H
-#define __SPI_CONTROLLER_FREERTOS_H
+#ifndef __SPI_CONTROLLER_H
+#define __SPI_CONTROLLER_H
 
 
 #define SPIC_NUM_PORTS             (2)
@@ -239,6 +239,4 @@ unsigned int spic2MassTransmit(unsigned int len, unsigned char *buff, unsigned i
  */
 unsigned int spic2ReadBuffer(unsigned int len, unsigned char *buff);
 
-portBASE_TYPE spic2BlockingWaitDMAFinish(TickType_t timeout);
-
-#endif // __SPI_CONTROLLER_FREERTOS_H
+#endif // __SPI_CONTROLLER_H
