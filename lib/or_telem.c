@@ -26,10 +26,10 @@
 #include "xl.h"
 #include "ams-enc.h"
 #include "imu_freertos.h"
-#include "leg_ctrl.h"
+//#include "leg_ctrl.h" //TODO: Temporarily removed while porting
 #include "adc_pid.h"
 #include "tih.h"
-#include "steering.h"
+//#include "steering.h" //TODO: Temporarily removed while porting
 
 // TODO (apullin) : Remove externs by adding getters to other modules
 //extern pidObj motor_pidObjs[NUM_MOTOR_PIDS];
