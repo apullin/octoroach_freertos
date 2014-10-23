@@ -81,11 +81,11 @@
  * See http://www.freertos.org/a00110.html.
  *----------------------------------------------------------*/
 
-#define configUSE_PREEMPTION			1
-#define configUSE_IDLE_HOOK				1
-#define configUSE_TICK_HOOK				0
-#define configTICK_RATE_HZ				( ( portTickType ) 1000 )
-#define configCPU_CLOCK_HZ				( ( unsigned long ) 40000000 )  /* Fosc / 2 */
+#define configUSE_PREEMPTION                    1
+#define configUSE_IDLE_HOOK                     1
+#define configUSE_TICK_HOOK			0
+#define configTICK_RATE_HZ			( ( portTickType ) 1000 )
+#define configCPU_CLOCK_HZ			( ( unsigned long ) 40000000 )  /* Fosc / 2 */
 #define configMAX_PRIORITIES			( ( unsigned portBASE_TYPE ) 4 )
 #define configMINIMAL_STACK_SIZE		( 105 )
 #define configTOTAL_HEAP_SIZE			( ( size_t ) 5120 )
@@ -96,7 +96,7 @@
 #define configUSE_MUTEXES                       1
 
 /* Co-routine definitions. */
-#define configUSE_CO_ROUTINES 		1
+#define configUSE_CO_ROUTINES 		0
 #define configMAX_CO_ROUTINE_PRIORITIES ( 2 )
 
 /* Set the following definitions to 1 to include the API function, or zero
