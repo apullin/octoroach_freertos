@@ -270,7 +270,7 @@ portBASE_TYPE radioEnqueueTxPacket(MacPacket packet, TickType_t delay) {
 //    if(!is_ready) { return 0; }
     //return carrayAddTail(tx_queue, packet);
     portBASE_TYPE xStatus;
-    xStatus = xQueueSendToBack(radioRXQueue, packet,  delay);
+    xStatus = xQueueSendToBack(radioTXQueue, packet,  delay);
     return xStatus;
 }
 
@@ -338,12 +338,13 @@ MacPacket radioRequestPacket(unsigned int data_size) {
         return NULL;
     }
 
-    pkt->payload = payCreateEmpty(data_size);
-
-    if(pkt->payload == NULL){
+    Payload pld = payCreateEmpty(data_size);
+    if(pld == NULL){
         vPortFree(pkt); //Free base MacPacketStruct on heap if we can't get a payload
         return NULL;
     }
+
+    macSetPayload(pkt, pld); //Critical step, since pkt->payload_length is set
 
     //TODO: Do these params need to be set here, or are they set above on creation?
     macSetSrc(pkt, configuration.address.pan_id, configuration.address.address);
@@ -699,7 +700,7 @@ static void radioProcessTx(void) {
     portBASE_TYPE xStatus;
 
 //    packet = (MacPacket) carrayPeekHead(tx_queue); // Find an outgoing packet
-    xStatus = xQueueReceive(radioRXQueue, (unsigned char*)(&packet), RADIO_QUEUE_ACQ_TIME_MS / portTICK_RATE_MS);
+    xStatus = xQueueReceive(radioTXQueue, (unsigned char*)(&packet), RADIO_QUEUE_ACQ_TIME_MS / portTICK_RATE_MS);
     //if(packet == NULL) { return; }
     if(xStatus == pdFALSE){
         return;
@@ -786,6 +787,8 @@ static portTASK_FUNCTION(vRadioTask, pvParameters) {
     for (;;) {
         
         radioProcess();
+
+        vTaskDelayUntil(&xLastWakeTime, (25 / portTICK_RATE_MS));
         
         taskYIELD();
     }

@@ -118,7 +118,7 @@ and return void. */
 void vApplicationIdleHook(void) {
     /* This hook function does nothing but increment a counter. */
     ulIdleCycleCount++;
-    Idle();  //dsPIC idle function; CPU core off, wakes on any interrupt
+//    Idle();  //dsPIC idle function; CPU core off, wakes on any interrupt
     //portSWITCH_CONTEXT();
     taskYIELD();  //TODO: Unclear if this is needed?
 }
