@@ -210,7 +210,7 @@ int spic2BeginTransaction(unsigned char cs) {
 }
 
 void spic1EndTransaction(void) {
-    static BaseType_t xHigherPriorityTaskWoken;
+//    static BaseType_t xHigherPriorityTaskWoken;
 
     // Only one CS line
     SPI1_CS = SPI_CS_IDLE;  // Idle chip select after freeing since may cause irq
@@ -225,7 +225,7 @@ void spic1EndTransaction(void) {
 }
 
 void spic2EndTransaction(void) {
-    static BaseType_t xHigherPriorityTaskWoken;
+//    static BaseType_t xHigherPriorityTaskWoken;
 
     if (port_cs_line[1] == 0)
       SPI2_CS1 = SPI_CS_IDLE;  // Idle chip select
@@ -404,13 +404,14 @@ void __attribute__((interrupt, no_auto_psv)) _DMA2Interrupt(void) {
     portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
     _DMA2IF = 0;
 
+    // Call registered callback function
+    int_handler_ch1[port_cs_line[0]](SPIC_TRANS_SUCCESS);
+
     xSemaphoreGiveFromISR(xSPI_CHAN1_Mutex, &xHigherPriorityTaskWoken );
     if (xHigherPriorityTaskWoken != pdFALSE) {
         taskYIELD();
     }
-    // Call registered callback function
-    //int_handler_ch1[port_cs_line[0]](SPIC_TRANS_SUCCESS);
-
+    
 }
 
 // ISR for DMA3 interrupt, currently DMAW for channel 1
@@ -431,12 +432,14 @@ void __attribute__((interrupt, no_auto_psv)) _DMA4Interrupt(void) {
     portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
     _DMA4IF = 0;
 
+    // Call registered callback function
+    int_handler_ch2[port_cs_line[1]](SPIC_TRANS_SUCCESS);
+
     xSemaphoreGiveFromISR(xSPI_CHAN2_Mutex, &xHigherPriorityTaskWoken );
     if (xHigherPriorityTaskWoken != pdFALSE) {
         taskYIELD();
     }
-    // Call registered callback function
-    //int_handler_ch2[port_cs_line[1]](SPIC_TRANS_SUCCESS);
+    
 }
 
 // ISR for DMA5 interrupt, currently DMAW for channel 2

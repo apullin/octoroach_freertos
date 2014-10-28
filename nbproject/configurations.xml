@@ -36,7 +36,7 @@
         <logicalFolder name="Source" displayName="Source" projectFiles="true">
           <logicalFolder name="portable" displayName="portable" projectFiles="true">
             <logicalFolder name="MemMang" displayName="MemMang" projectFiles="true">
-              <itemPath>FreeRTOS/Source/portable/MemMang/heap_2.c</itemPath>
+              <itemPath>FreeRTOS/Source/portable/MemMang/heap_3.c</itemPath>
             </logicalFolder>
             <logicalFolder name="MPLAB" displayName="MPLAB" projectFiles="true">
               <logicalFolder name="PIC24_dsPIC" displayName="PIC24_dsPIC" projectFiles="true">
@@ -207,7 +207,7 @@
         <property key="general-code-protect" value="no_code_protect"/>
         <property key="general-write-protect" value="no_write_protect"/>
         <property key="generate-cross-reference-file" value="false"/>
-        <property key="heap-size" value="8192"/>
+        <property key="heap-size" value="10240"/>
         <property key="input-libraries" value=""/>
         <property key="linker-stack" value="true"/>
         <property key="linker-symbols" value=""/>

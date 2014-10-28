@@ -73,8 +73,11 @@
 #define RADIO_AUTOCALIBRATE             (0)
 #define RADIO_CALIB_PERIOD              (300000000) // 5 minutes
 
-#define RADIO_STATE_ACQ_TIME_MS         25
-#define RADIO_QUEUE_ACQ_TIME_MS         25
+//#define RADIO_STATE_ACQ_TIME_MS         25
+#define RADIO_STATE_ACQ_TIME_MS         portMAX_DELAY
+//#define RADIO_QUEUE_ACQ_TIME_MS         25
+#define RADIO_QUEUE_ACQ_TIME_MS         portMAX_DELAY
+
 
 #define radiotaskSTACK_SIZE             configMINIMAL_STACK_SIZE
 

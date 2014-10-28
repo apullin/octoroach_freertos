@@ -64,8 +64,9 @@
 /* Task priorities. */
 #define mainIMU_TASK_PRIORITY                           ( tskIDLE_PRIORITY + 4 )
 #define mainTELEM_TASK_PRIORITY                         ( tskIDLE_PRIORITY + 3 )
-#define mainRADIO_TASK_PRIORITY                         ( tskIDLE_PRIORITY + 1 )
 #define mainRADIOTEST_TASK_PRIORITY                     ( tskIDLE_PRIORITY + 2 )
+#define mainALIVETEST_TASK_PRIORITY                     ( tskIDLE_PRIORITY + 2 )
+#define mainRADIO_TASK_PRIORITY                         ( tskIDLE_PRIORITY + 1 )
 
 //Private function prototypes
 static void prvSetupHardware(void);
@@ -77,8 +78,9 @@ static void prvSetupHardware(void);
 static void prvSetupHardware(void);
 void prvStartupLights(void);
 
-
+// Debugging and test tasks
 void radioTestSetup( unsigned portBASE_TYPE uxPriority);
+void aliveTestSetup( unsigned portBASE_TYPE uxPriority);
 
 int main(void) {
     /* Perform any hardware setup necessary. */
@@ -101,7 +103,10 @@ int main(void) {
     prvStartupLights();
 
     //Test that sends WHOAMI's and ECHO's at 2Hz
-    radioTestSetup(mainRADIOTEST_TASK_PRIORITY);
+//    radioTestSetup(mainRADIOTEST_TASK_PRIORITY);
+
+    //Lights test to show cpu is alive
+//    aliveTestSetup(mainALIVETEST_TASK_PRIORITY);
 
     /* Start the created tasks running. */
     vTaskStartScheduler();
@@ -118,9 +123,9 @@ and return void. */
 void vApplicationIdleHook(void) {
     /* This hook function does nothing but increment a counter. */
     ulIdleCycleCount++;
-//    Idle();  //dsPIC idle function; CPU core off, wakes on any interrupt
+    Idle();  //dsPIC idle function; CPU core off, wakes on any interrupt
     //portSWITCH_CONTEXT();
-    taskYIELD();  //TODO: Unclear if this is needed?
+//    taskYIELD();  //TODO: Unclear if this is needed?
 }
 
 void prvSetupHardware(void){
@@ -171,25 +176,66 @@ static portTASK_FUNCTION(vRadioTestTask, pvParameters){
     xLastWakeTime = xTaskGetTickCount();
     portBASE_TYPE xStatus;
 
-    static char echoMsg[] = "Echo Test from FreeRTOS";
+    static char echoMsg[90];
     char* verstr = versionGetString();
     int verlen = strlen(verstr);
+
+    unsigned int pktNum = 1;
 
     for (;;) {
         //TODO: Is yielding neccesary here?
         // Delay task in a periodic manner
 
         //Send WHOAMI packet
-        radioSendData(RADIO_DST_ADDR, 0, CMD_WHO_AM_I, verlen, (unsigned char*)verstr, 0);
-        LED_YELLOW = ~LED_YELLOW;
+//        radioSendData(RADIO_DST_ADDR, 0, CMD_WHO_AM_I, verlen, (unsigned char*)verstr, 0);
+//        LED_YELLOW = ~LED_YELLOW;
         //Delay 500ms
-        vTaskDelayUntil(&xLastWakeTime, (500 / portTICK_RATE_MS));
+//        vTaskDelayUntil(&xLastWakeTime, (500 / portTICK_RATE_MS));
         //Send ECHO packet
+        sprintf(echoMsg, "FreeRTOS radio test packet #%d",pktNum);
+        pktNum++;
         radioSendData(RADIO_DST_ADDR, 0, CMD_ECHO, strlen(echoMsg), (unsigned char*)echoMsg, 0);
         LED_YELLOW = ~LED_YELLOW;
         //Delay 500ms
-        vTaskDelayUntil(&xLastWakeTime, (500 / portTICK_RATE_MS));
+        vTaskDelayUntil(&xLastWakeTime, (10 / portTICK_RATE_MS));
 
+        taskYIELD();
+    }
+}
+
+//// Alive indicator
+void aliveTestSetup( unsigned portBASE_TYPE uxPriority);
+static portTASK_FUNCTION_PROTO(vAliveTestTask, pvParameters); //FreeRTOS task
+
+void aliveTestSetup( unsigned portBASE_TYPE uxPriority){
+    portBASE_TYPE xStatus;
+
+    xStatus = xTaskCreate(vAliveTestTask, /* Pointer to the function that implements the task. */
+            (const char *) "Radio Test Task", /* Text name for the task. This is to facilitate debugging. */
+            240, /* Stack depth in words. */
+            NULL, /* We are not using the task parameter. */
+            uxPriority, /* This task will run at priority 1. */
+            NULL); /* We are not going to use the task handle. */
+//    return xStatus;
+}
+
+static portTASK_FUNCTION(vAliveTestTask, pvParameters){
+    portTickType xLastWakeTime;
+    xLastWakeTime = xTaskGetTickCount();
+    portBASE_TYPE xStatus;
+
+    for (;;) {
+        //TODO: Is yielding neccesary here?
+        // Delay task in a periodic manner
+
+        LED_RED = 1;
+        vTaskDelayUntil(&xLastWakeTime, (150 / portTICK_RATE_MS));
+        LED_RED = 0;
+        vTaskDelayUntil(&xLastWakeTime, (150 / portTICK_RATE_MS));
+        LED_RED = 1;
+        vTaskDelayUntil(&xLastWakeTime, (150 / portTICK_RATE_MS));
+        LED_RED = 0;
+        vTaskDelayUntil(&xLastWakeTime, (800 / portTICK_RATE_MS)); //1 Hz
         taskYIELD();
     }
 }
