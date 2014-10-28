@@ -210,35 +210,35 @@ int spic2BeginTransaction(unsigned char cs) {
 }
 
 void spic1EndTransaction(void) {
-//    static BaseType_t xHigherPriorityTaskWoken;
+    static BaseType_t xHigherPriorityTaskWoken;
 
     // Only one CS line
     SPI1_CS = SPI_CS_IDLE;  // Idle chip select after freeing since may cause irq
-    xSemaphoreGive(xSPI_CHAN1_Mutex);
+    xSemaphoreGiveFromISR(xSPI_CHAN1_Mutex, &xHigherPriorityTaskWoken);
 
-//    if (xHigherPriorityTaskWoken != pdFALSE) {
+    if (xHigherPriorityTaskWoken != pdFALSE) {
         // We can force a context switch here.  Context switching from an
         // ISR uses port specific syntax.
-//        taskYIELD();
-//    }
+        taskYIELD();
+    }
 
 }
 
 void spic2EndTransaction(void) {
-//    static BaseType_t xHigherPriorityTaskWoken;
+    static BaseType_t xHigherPriorityTaskWoken;
 
     if (port_cs_line[1] == 0)
       SPI2_CS1 = SPI_CS_IDLE;  // Idle chip select
     if (port_cs_line[1] == 1)
       SPI2_CS2 = SPI_CS_IDLE;  // Idle chip select
 
-    xSemaphoreGive(xSPI_CHAN2_Mutex);
+    xSemaphoreGiveFromISR(xSPI_CHAN2_Mutex, &xHigherPriorityTaskWoken);
 
-//    if (xHigherPriorityTaskWoken != pdFALSE) {
+    if (xHigherPriorityTaskWoken != pdFALSE) {
         // We can force a context switch here.  Context switching from an
         // ISR uses port specific syntax.
-//        taskYIELD();
-//    }
+        taskYIELD();
+    }
     
 }
 

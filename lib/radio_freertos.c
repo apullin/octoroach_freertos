@@ -491,6 +491,8 @@ static void radioReset(void) {
  */
 void trxCallback(unsigned int irq_cause) {
 
+    static BaseType_t xHigherPriorityTaskWoken;
+
     if (status.state == STATE_SLEEP) {
         // Shouldn't be here since sleep isn't implemented yet!
     } else if (status.state == STATE_IDLE) {
@@ -499,7 +501,8 @@ void trxCallback(unsigned int irq_cause) {
 
         // Beginning reception process
         if (irq_cause == RADIO_RX_START) {
-            xSemaphoreTake(xRadioMutex, portMAX_DELAY);
+//            xSemaphoreTake(xRadioMutex, portMAX_DELAY);
+            xSemaphoreTakeFromISR(xRadioMutex, &xHigherPriorityTaskWoken);
             status.state = STATE_RX_BUSY;
         }
 
@@ -521,7 +524,8 @@ void trxCallback(unsigned int irq_cause) {
         // Transmit successful
         if (irq_cause == RADIO_TX_SUCCESS) {
             //radioReturnPacket(carrayPopHead(tx_queue)); //Obsolete. Packet removed from queue at dequeue time
-            xSemaphoreGive(xRadioMutex);
+//            xSemaphoreGive(xRadioMutex);
+            xSemaphoreGiveFromISR(xRadioMutex, &xHigherPriorityTaskWoken);
             radioSetStateRx();
         } else if (irq_cause == RADIO_TX_FAILURE) {
             // If no more retries, reset retry counter
@@ -529,11 +533,18 @@ void trxCallback(unsigned int irq_cause) {
             if (status.retry_number > configuration.soft_retries) {
                 status.retry_number = 0;
                 //radioReturnPacket((MacPacket)carrayPopHead(tx_queue)); //Obsolete. Packet removed from queue at dequeue time
-                xSemaphoreGive(xRadioMutex);
+//                xSemaphoreGive(xRadioMutex);
+                xSemaphoreGiveFromISR(xRadioMutex, &xHigherPriorityTaskWoken);;
                 radioSetStateRx();
             }
         }
 
+    }
+
+    if (xHigherPriorityTaskWoken != pdFALSE) {
+        // We can force a context switch here.  Context switching from an
+        // ISR uses port specific syntax.
+        taskYIELD();
     }
 
     // Hardware error
@@ -703,7 +714,7 @@ static void radioProcessTx(void) {
     portBASE_TYPE xStatus;
 
 //    packet = (MacPacket) carrayPeekHead(tx_queue); // Find an outgoing packet
-    xStatus = xQueueReceive(radioTXQueue, (unsigned char*)(&packet), RADIO_QUEUE_ACQ_TIME_MS / portTICK_RATE_MS);
+    xStatus = xQueueReceive(radioTXQueue, (void*)pktPtr, RADIO_QUEUE_ACQ_TIME_MS / portTICK_RATE_MS);
     //if(packet == NULL) { return; }
     if(xStatus == pdFALSE){
         return;
@@ -716,7 +727,8 @@ static void radioProcessTx(void) {
     trxWriteFrameBuffer(pktPtr); // Write packet to transmitter and send
     trxBeginTransmission();
 
-    vPortFree(packet.payload); //payload was allocated on the heap
+    vPortFree(packet.payload->pld_data); //payload data was allocated on heap
+    vPortFree(packet.payload);          //payload struct was allocated on the heap
 }
 
 /**

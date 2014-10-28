@@ -103,10 +103,10 @@ int main(void) {
     prvStartupLights();
 
     //Test that sends WHOAMI's and ECHO's at 2Hz
-//    radioTestSetup(mainRADIOTEST_TASK_PRIORITY);
+    radioTestSetup(mainRADIOTEST_TASK_PRIORITY);
 
     //Lights test to show cpu is alive
-//    aliveTestSetup(mainALIVETEST_TASK_PRIORITY);
+    aliveTestSetup(mainALIVETEST_TASK_PRIORITY);
 
     /* Start the created tasks running. */
     vTaskStartScheduler();
@@ -127,6 +127,15 @@ void vApplicationIdleHook(void) {
     //portSWITCH_CONTEXT();
 //    taskYIELD();  //TODO: Unclear if this is needed?
 }
+
+void vApplicationStackOverflowHook( TaskHandle_t xTask,
+                                    signed char *pcTaskName ){
+    while(1){
+        Nop();
+        Nop();
+    }
+}
+
 
 void prvSetupHardware(void){
     SetupClock();   //from imageproc-lib , config PLL
@@ -177,10 +186,9 @@ static portTASK_FUNCTION(vRadioTestTask, pvParameters){
     portBASE_TYPE xStatus;
 
     static char echoMsg[90];
-    char* verstr = versionGetString();
-    int verlen = strlen(verstr);
+    int heapspace = 0;
 
-    unsigned int pktNum = 1;
+    unsigned long pktNum = 1;
 
     for (;;) {
         //TODO: Is yielding neccesary here?
@@ -192,7 +200,9 @@ static portTASK_FUNCTION(vRadioTestTask, pvParameters){
         //Delay 500ms
 //        vTaskDelayUntil(&xLastWakeTime, (500 / portTICK_RATE_MS));
         //Send ECHO packet
-        sprintf(echoMsg, "FreeRTOS radio test packet #%d",pktNum);
+        heapspace = xPortGetFreeHeapSize();
+        sprintf(echoMsg, "FreeRTOS test packet #%lu, heap space: %d", pktNum, heapspace);
+//        sprintf(echoMsg, "test");
         pktNum++;
         radioSendData(RADIO_DST_ADDR, 0, CMD_ECHO, strlen(echoMsg), (unsigned char*)echoMsg, 0);
         LED_YELLOW = ~LED_YELLOW;
