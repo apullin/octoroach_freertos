@@ -104,7 +104,7 @@ int main(void) {
     prvStartupLights();
 
     //Test that sends WHOAMI's and ECHO's at 2Hz
-//    radioTestSetup(mainRADIOTEST_TASK_PRIORITY);
+    radioTestSetup(mainRADIOTEST_TASK_PRIORITY);
 
     //Lights test to show cpu is alive
     aliveTestSetup(mainALIVETEST_TASK_PRIORITY);
@@ -212,7 +212,7 @@ static portTASK_FUNCTION(vRadioTestTask, pvParameters){
         radioSendData(RADIO_DST_ADDR, 0, CMD_ECHO, strlen(echoMsg), (unsigned char*)echoMsg, 0);
         LED_YELLOW = ~LED_YELLOW;
         //Delay 500ms
-        vTaskDelayUntil(&xLastWakeTime, (10 / portTICK_RATE_MS));
+        vTaskDelayUntil(&xLastWakeTime, (123 / portTICK_RATE_MS));
 
         taskYIELD();
     }

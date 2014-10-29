@@ -26,6 +26,19 @@ def main():
     
     shared.ROBOTS = [R1] #This is necessary so callbackfunc can reference robots
     shared.xb = xb           #This is necessary so callbackfunc can halt before exit
+    
+    pktNum = 1;
+    
+    while True:
+        try:
+            echoString = "Echo test #%d" % pktNum
+            print "Sending: ",echoString
+            pktNum = pktNum + 1
+            R1.sendEcho(echoString)
+            time.sleep(0.5)
+        except KeyboardInterrupt:
+                print "Stopping echo, going to listener mode"
+                break
 
     if EXIT_WAIT:  #Pause for a Ctrl+C if specified
         while True:
