@@ -40,7 +40,7 @@
       <itemPath>FreeRTOSConfig.h</itemPath>
       <itemPath>../imageproc-lib/utils.h</itemPath>
       <itemPath>settings.h</itemPath>
-      <itemPath>cmd.h</itemPath>
+      <itemPath>cmd_freertos.h</itemPath>
     </logicalFolder>
     <logicalFolder name="LinkerScript"
                    displayName="Linker Files"
@@ -93,6 +93,7 @@
         <itemPath>lib/radio_freertos.c</itemPath>
       </logicalFolder>
       <itemPath>main_octoroach_freertos.c.c</itemPath>
+      <itemPath>cmd_freertos.c</itemPath>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"
@@ -116,7 +117,7 @@
         <targetPluginBoard></targetPluginBoard>
         <platformTool>RealICEPlatformTool</platformTool>
         <languageToolchain>XC16</languageToolchain>
-        <languageToolchainVersion>1.21</languageToolchainVersion>
+        <languageToolchainVersion>1.22</languageToolchainVersion>
         <platform>3</platform>
       </toolsSet>
       <compileType>
@@ -124,6 +125,8 @@
           <linkerLibItems>
           </linkerLibItems>
         </linkerTool>
+        <archiverTool>
+        </archiverTool>
         <loading>
           <useAlternateLoadableFile>false</useAlternateLoadableFile>
           <parseOnProdLoad>false</parseOnProdLoad>
@@ -247,6 +250,8 @@
         <property key="warn-section-align" value="false"/>
       </C30-LD>
       <C30Global>
+        <property key="common-include-directories" value=""/>
+        <property key="dual-boot-partition" value="0"/>
         <property key="fast-math" value="false"/>
         <property key="generic-16-bit" value="false"/>
         <property key="legacy-libc" value="false"/>
@@ -398,7 +403,6 @@
         <property key="UART 1" value="true"/>
         <property key="UART 2" value="true"/>
         <property key="debugoptions.useswbreakpoints" value="false"/>
-        <property key="firmware.download.all" value="false"/>
         <property key="hwtoolclock.frcindebug" value="false"/>
         <property key="hwtoolclock.instructionspeed" value="4"/>
         <property key="hwtoolclock.units" value="mips"/>
@@ -406,6 +410,7 @@
         <property key="memories.bootflash" value="true"/>
         <property key="memories.configurationmemory" value="true"/>
         <property key="memories.configurationmemory2" value="true"/>
+        <property key="memories.dataflash" value="true"/>
         <property key="memories.eeprom" value="true"/>
         <property key="memories.flashdata" value="true"/>
         <property key="memories.id" value="true"/>
@@ -417,6 +422,7 @@
         <property key="memories.programmemory.partition2.start"
                   value="${memories.programmemory.partition2.start.value}"/>
         <property key="memories.programmemory.start" value="0x0"/>
+        <property key="memories.userotp" value="false"/>
         <property key="poweroptions.powerenable" value="false"/>
         <property key="programoptions.donoteraseauxmem" value="false"/>
         <property key="programoptions.eraseb4program" value="true"/>
@@ -425,6 +431,7 @@
         <property key="programoptions.preserveprogramrange.end" value="0x157ff"/>
         <property key="programoptions.preserveprogramrange.start" value="0x0"/>
         <property key="programoptions.preserveuserid" value="false"/>
+        <property key="programoptions.programcalmem" value="false"/>
         <property key="programoptions.usehighvoltageonmclr" value="false"/>
         <property key="programoptions.uselvpprogramming" value="false"/>
         <property key="tracecontrol.collectioninterval" value="1"/>

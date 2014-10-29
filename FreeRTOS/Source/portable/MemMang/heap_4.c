@@ -93,7 +93,8 @@ task.h is included from an application file. */
 #define heapADJUSTED_HEAP_SIZE	( configTOTAL_HEAP_SIZE - portBYTE_ALIGNMENT )
 
 /* Allocate the memory for the heap. */
-static uint8_t ucHeap[ configTOTAL_HEAP_SIZE ];
+//static uint8_t ucHeap[ configTOTAL_HEAP_SIZE ];
+static uint8_t ucHeap[ configTOTAL_HEAP_SIZE ] __attribute__ ((far));
 
 /* Define the linked list structure.  This is used to link free blocks in order
 of their memory address. */
