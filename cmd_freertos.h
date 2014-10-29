@@ -11,6 +11,8 @@ is invalid and void.
 #ifndef __CMD_H
 #define __CMD_H
 
+#include "FreeRTOS.h"
+
 #include "cmd_const.h"
 
 #define CMD_VECTOR_SIZE				0xFF //full length vector
@@ -36,7 +38,6 @@ is invalid and void.
 #define CMD_SET_HALL_GAINS          0x91
 #define CMD_SET_TAIL_QUEUE          0x92
 #define CMD_SET_TAIL_GAINS          0x93
-#define CMD_SET_THRUST_HALL         0x94
 #define CMD_SET_OL_VIBE             0x95
 
 typedef struct{

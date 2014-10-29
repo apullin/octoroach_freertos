@@ -111,8 +111,9 @@ int main(void) {
     //Cmd Handler task
     cmdSetup(mainCMDHANDLER_TASK_PRIORITY);
 
-    /* Start the created tasks running. */
+    /****** Start the created tasks running. ******/
     vTaskStartScheduler();
+
     /* Execution will only reach here if there was insufficient heap to
     start the scheduler. */
     for (;;);

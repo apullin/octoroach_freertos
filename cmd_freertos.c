@@ -19,8 +19,15 @@ is invalid and void.
 #include "utils.h"
 #include "cmd_freertos.h"
 #include "cmd_const.h"
-
+#include "dfmem.h"
+#include "radio_freertos.h"
+#include "tih.h"
+#include "telem-freertos.h"
+#include "version.h"
 #include "settings.h" //major config defines, sys-service, hall, etc
+
+#include <stdlib.h>
+#include <string.h>
 
 #define PKT_UNPACK(type, var, pktframe) type* var = (type*)(pktframe);
 
@@ -49,7 +56,6 @@ static void cmdSteer(unsigned char status, unsigned char length, unsigned char *
 static void cmdEraseMemSector(unsigned char status, unsigned char length, unsigned char *frame);
 
 static void cmdEcho(unsigned char status, unsigned char length, unsigned char *frame);
-//void cmdEcho(unsigned char status, unsigned char length, unsigned char *frame);
 
 static void cmdNop(unsigned char status, unsigned char length, unsigned char *frame);
 
@@ -74,7 +80,6 @@ static void cmdZeroPos(unsigned char status, unsigned char length, unsigned char
 static void cmdSetHallGains(unsigned char status, unsigned char length, unsigned char *frame);
 static void cmdSetTailQueue(unsigned char status, unsigned char length, unsigned char *frame);
 static void cmdSetTailGains(unsigned char status, unsigned char length, unsigned char *frame);
-static void cmdSetThrustHall(unsigned char status, unsigned char length, unsigned char *frame);
 static void cmdSetOLVibe(unsigned char status, unsigned char length, unsigned char *frame);
 
 //////////////////////////////////////////////////
@@ -130,7 +135,6 @@ unsigned int cmdSetup(unsigned portBASE_TYPE uxPriority) {
     cmd_func[CMD_SET_HALL_GAINS] = &cmdSetHallGains;
     cmd_func[CMD_SET_TAIL_QUEUE] = &cmdSetTailQueue;
     cmd_func[CMD_SET_TAIL_GAINS] = &cmdSetTailGains;
-    cmd_func[CMD_SET_THRUST_HALL] = &cmdSetThrustHall;
     cmd_func[CMD_SET_OL_VIBE]  = &cmdSetOLVibe;
 
     //Start FreeRTOS task
@@ -301,7 +305,7 @@ static void cmdSoftwareReset(unsigned char status, unsigned char length, unsigne
     int len = strlen(resetmsg);
     
     //Send notification message before reset
-    radioSendData(RADIO_DST_ADDR, 0, CMD_SOFTWARE_RESET, len, resetmsg, 0);
+    radioSendData(RADIO_DST_ADDR, 0, CMD_SOFTWARE_RESET, len, (unsigned char*)resetmsg, 0);
 
 #ifndef __DEBUG //Prevent reset in debug mode
     __asm__ volatile ("reset");
@@ -499,7 +503,7 @@ static portTASK_FUNCTION(vCmdHandlerTask, pvParameters) { //FreeRTOS task
 
     for (;;) { //Task loop
         //Blocking wait on incoming command
-        xStatus = xQueueReceive(radioRXQueue, pktPtr, portMAX_DELAY);
+        xStatus = xQueueReceive(radioRXQueue, packet, portMAX_DELAY);
         //Note: packet has payload and payload->pld_data on heap
 
         //Structure command
