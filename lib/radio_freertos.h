@@ -120,6 +120,8 @@ void radioSetWatchdogTime(unsigned int time);
 // Queue interface
 portBASE_TYPE radioEnqueueTxPacket(MacPacket packet, TickType_t delay);
 portBASE_TYPE radioDequeueRxPacket(MacPacket packet, TickType_t delay);
+QueueHandle_t radioGetTXQueueHandle(void);
+QueueHandle_t radioGetRXQueueHandle(void);
 
 unsigned char radioSendData (unsigned int dest_addr, unsigned char status,
                              unsigned char type, unsigned int datalen,
