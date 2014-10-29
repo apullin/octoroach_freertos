@@ -62,12 +62,12 @@
 #include "radio_freertos.h"
 
 /* Task priorities. */
-#define mainIMU_TASK_PRIORITY                           ( tskIDLE_PRIORITY + 4 )
-#define mainTELEM_TASK_PRIORITY                         ( tskIDLE_PRIORITY + 3 )
-#define mainRADIOTEST_TASK_PRIORITY                     ( tskIDLE_PRIORITY + 2 )
-#define mainALIVETEST_TASK_PRIORITY                     ( tskIDLE_PRIORITY + 2 )
-#define mainRADIO_TASK_PRIORITY                         ( tskIDLE_PRIORITY + 1 )
-
+#define mainIMU_TASK_PRIORITY                           ( tskIDLE_PRIORITY + 10)
+#define mainTELEM_TASK_PRIORITY                         ( tskIDLE_PRIORITY + 9 )
+#define mainRADIOTEST_TASK_PRIORITY                     ( tskIDLE_PRIORITY + 8 )
+#define mainALIVETEST_TASK_PRIORITY                     ( tskIDLE_PRIORITY + 8 )
+#define mainRADIO_TASK_PRIORITY                         ( tskIDLE_PRIORITY + 7 )
+#define mainCMDHANDLER_TASK_PRIORITY                    ( tskIDLE_PRIORITY + 1 )
 //Private function prototypes
 static void prvSetupHardware(void);
 
@@ -103,10 +103,13 @@ int main(void) {
     prvStartupLights();
 
     //Test that sends WHOAMI's and ECHO's at 2Hz
-    radioTestSetup(mainRADIOTEST_TASK_PRIORITY);
+//    radioTestSetup(mainRADIOTEST_TASK_PRIORITY);
 
     //Lights test to show cpu is alive
     aliveTestSetup(mainALIVETEST_TASK_PRIORITY);
+    
+    //Cmd Handler task
+    cmdSetup(mainCMDHANDLER_TASK_PRIORITY);
 
     /* Start the created tasks running. */
     vTaskStartScheduler();

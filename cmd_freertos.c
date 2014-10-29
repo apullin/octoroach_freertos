@@ -1,58 +1,40 @@
 /***************************************************************************
- * Name: cmd.c
+ * Name: cmd_freertos.c
  * Desc: Receiving and transmitting queue handler
  * Date: 2010-07-10
  * Author: stanbaek, apullin
-Modifications and additions to this file made by Andrew Pullin are copyright, 2013
+
 Copyrights are acknowledged for portions of this code extant before modifications by Andrew Pullin 
 Any application of BSD or other license to copyright content without the authors express approval
 is invalid and void.
  **************************************************************************/
 
-#include "cmd.h"
-#include "cmd_const.h"
-#include "dfmem.h"
+#include<xc.h>
+//FreeRTOS includes
+#include "FreeRTOS.h"
+#include "task.h"
+#include "queue.h"
+#include "semphr.h"
+//Library includes
 #include "utils.h"
-#include "ports.h"
-#include "gyro.h"
-#include "xl.h"
-#include "sclock.h"
-#include "motor_ctrl.h"
-#include "sensors.h"
-#include "dfmem.h"
-#include "pid.h"
-#include "radio.h"
-#include "payload.h"
-#include "move_queue.h"
-#include "steering.h"
-#include "telem.h"
-#include "leg_ctrl.h"
-#include "tail_ctrl.h"
-#include "hall.h"
-#include "version.h"
-#include "tih.h"
-#include "ol-vibe.h"
+#include "cmd_freertos.h"
+#include "cmd_const.h"
 
 #include "settings.h" //major config defines, sys-service, hall, etc
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-
 #define PKT_UNPACK(type, var, pktframe) type* var = (type*)(pktframe);
 
-unsigned char tx_frame_[127];
+//////////////////////////////////////////////////
+//////////      FreeRTOS config        ///////////
+//////////////////////////////////////////////////
+#define CMD_QUEUE_SIZE          1
 
-extern MoveQueue moveq;
-extern TailQueue tailq;
-extern int offsz;
-
-extern moveCmdT currentMove, idleMove;
-extern tailCmdT currentTail, idleTail;
-
-extern volatile char g_radio_duty_cycle;
-
-
+//////////////////////////////////////////////////
+////////// Private function prototypes ///////////
+//////////////////////////////////////////////////
+static portTASK_FUNCTION_PROTO(vCmdHandlerTask, pvParameters);       //FreeRTOS task
+portBASE_TYPE vStartCmdHandlerTask( unsigned portBASE_TYPE uxPriority);
+static QueueHandle_t cmdQueue;
 
 // use an array of function pointer to avoid a number of case statements
 // CMD_VECTOR_SIZE is defined in cmd_const.h
@@ -66,7 +48,7 @@ static void cmdSteer(unsigned char status, unsigned char length, unsigned char *
 
 static void cmdEraseMemSector(unsigned char status, unsigned char length, unsigned char *frame);
 
-//static void cmdEcho(unsigned char status, unsigned char length, unsigned char *frame);
+static void cmdEcho(unsigned char status, unsigned char length, unsigned char *frame);
 //void cmdEcho(unsigned char status, unsigned char length, unsigned char *frame);
 
 static void cmdNop(unsigned char status, unsigned char length, unsigned char *frame);
@@ -95,13 +77,27 @@ static void cmdSetTailGains(unsigned char status, unsigned char length, unsigned
 static void cmdSetThrustHall(unsigned char status, unsigned char length, unsigned char *frame);
 static void cmdSetOLVibe(unsigned char status, unsigned char length, unsigned char *frame);
 
-/*-----------------------------------------------------------------------------
- *          Public functions
------------------------------------------------------------------------------*/
-unsigned int cmdSetup(void) {
+//////////////////////////////////////////////////
+////////// Public function definitions ///////////
+//////////////////////////////////////////////////
+
+portBASE_TYPE vStartCmdHandlerTask( unsigned portBASE_TYPE uxPriority){
+    portBASE_TYPE xStatus;
+
+    xStatus = xTaskCreate(vCmdHandlerTask, /* Pointer to the function that implements the task. */
+            (const char *) "Cmd Handler Task", /* Text name for the task. This is to facilitate debugging. */
+            240, /* Stack depth in words. */
+            NULL, /* We are not using the task parameter. */
+            uxPriority, /* This task will run at priority 1. */
+            NULL); /* We are not going to use the task handle. */
+
+    return xStatus;
+}
+
+
+unsigned int cmdSetup(unsigned portBASE_TYPE uxPriority) {
 
     unsigned int i;
-
 
     // initialize the array of func pointers with Nop()
     for (i = 0; i < MAX_CMD_FUNC; ++i) {
@@ -136,26 +132,11 @@ unsigned int cmdSetup(void) {
     cmd_func[CMD_SET_TAIL_GAINS] = &cmdSetTailGains;
     cmd_func[CMD_SET_THRUST_HALL] = &cmdSetThrustHall;
     cmd_func[CMD_SET_OL_VIBE]  = &cmdSetOLVibe;
-    return 1;
-}
 
-void cmdHandleRadioRxBuffer(void) {
-    MacPacket packet;
-    Payload pld;
-    unsigned char command, status;
-    
-    if ((packet = radioDequeueRxPacket()) != NULL) {
-        //LED_YELLOW = 1;
-        pld = macGetPayload(packet);
-        status = payGetStatus(pld);
-        command = payGetType(pld);
-        if (command < MAX_CMD_FUNC) {
-            cmd_func[command](status, payGetDataLength(pld), payGetData(pld));
-        }
-        radioReturnPacket(packet);
-    }
-    
-    return;
+    //Start FreeRTOS task
+    vStartCmdHandlerTask(uxPriority);
+
+    return 1;
 }
 
 
@@ -235,19 +216,19 @@ static void cmdSetThrustClosedLoop(unsigned char status, unsigned char length, u
     //Unpack unsigned char* frame into structured values
     PKT_UNPACK(_args_cmdSetThrustClosedLoop, argsPtr, frame);
 
-    legCtrlSetInput(LEG_CTRL_LEFT, argsPtr->chan1);
-    legCtrlOnOff(LEG_CTRL_LEFT, PID_ON); //Motor PID #1 -> ON
-
-    legCtrlSetInput(LEG_CTRL_RIGHT, argsPtr->chan2);
-    legCtrlOnOff(LEG_CTRL_RIGHT, PID_ON); //Motor PID #2 -> ON
+//    legCtrlSetInput(LEG_CTRL_LEFT, argsPtr->chan1);
+//    legCtrlOnOff(LEG_CTRL_LEFT, PID_ON); //Motor PID #1 -> ON
+//
+//    legCtrlSetInput(LEG_CTRL_RIGHT, argsPtr->chan2);
+//    legCtrlOnOff(LEG_CTRL_RIGHT, PID_ON); //Motor PID #2 -> ON
 }
 
 static void cmdSetPIDGains(unsigned char status, unsigned char length, unsigned char *frame) {
     //Unpack unsigned char* frame into structured values
     PKT_UNPACK(_args_cmdSetPIDGains, argsPtr, frame);
 
-    legCtrlSetGains(0, argsPtr->Kp1, argsPtr->Ki1, argsPtr->Kd1, argsPtr->Kaw1, argsPtr->Kff1);
-    legCtrlSetGains(1, argsPtr->Kp2, argsPtr->Ki2, argsPtr->Kd2, argsPtr->Kaw2, argsPtr->Kff2);
+//    legCtrlSetGains(0, argsPtr->Kp1, argsPtr->Ki1, argsPtr->Kd1, argsPtr->Kaw1, argsPtr->Kff1);
+//    legCtrlSetGains(1, argsPtr->Kp2, argsPtr->Ki2, argsPtr->Kd2, argsPtr->Kaw2, argsPtr->Kff2);
 
     //Send confirmation packet, which is the exact same data payload as what was sent
     //Note that the destination is the hard-coded RADIO_DST_ADDR
@@ -264,7 +245,7 @@ static void cmdGetPIDTelemetry(unsigned char status, unsigned char length, unsig
 static void cmdSetCtrldTurnRate(unsigned char status, unsigned char length, unsigned char *frame) {
     //Unpack unsigned char* frame into structured values
     PKT_UNPACK(_args_cmdSetCtrldTurnRate, argsPtr, frame);
-    steeringSetInput(argsPtr->steerInput);
+//    steeringSetInput(argsPtr->steerInput);
 
     //Send confirmation packet, which is the exact same data payload as what was sent
     //Note that the destination is the hard-coded RADIO_DST_ADDR
@@ -286,16 +267,16 @@ static void cmdSetMoveQueue(unsigned char status, unsigned char length, unsigned
     //Due to variable length, PKT_UNPACK is not used here
     int idx = sizeof (count); //should be an unsigned int, sizeof(uint) = 2
 
-    moveCmdT move;
-    int i;
-    for (i = 0; i < count; i++) {
-        move = (moveCmdT) malloc(sizeof (moveCmdStruct));
-        //argsPtr = (_args_cmdSetMoveQueue*)(frame+idx);
-        *move = *((moveCmdT) (frame + idx));
-        mqPush(moveq, move);
-        //idx =+ sizeof(_args_cmdSetMoveQueue);
-        idx += sizeof (moveCmdStruct);
-    }
+//    moveCmdT move;
+//    int i;
+//    for (i = 0; i < count; i++) {
+//        move = (moveCmdT) malloc(sizeof (moveCmdStruct));
+//        //argsPtr = (_args_cmdSetMoveQueue*)(frame+idx);
+//        *move = *((moveCmdT) (frame + idx));
+//        mqPush(moveq, move);
+//        //idx =+ sizeof(_args_cmdSetMoveQueue);
+//        idx += sizeof (moveCmdStruct);
+//    }
 }
 
 //Format for steering gains:
@@ -306,8 +287,8 @@ static void cmdSetSteeringGains(unsigned char status, unsigned char length, unsi
     //Unpack unsigned char* frame into structured values
     PKT_UNPACK(_args_cmdSetSteeringGains, argsPtr, frame);
 
-    steeringSetGains(argsPtr->Kp, argsPtr->Ki, argsPtr->Kd, argsPtr->Kaw, argsPtr->Kff);
-    steeringSetMode(argsPtr->steerMode);
+//    steeringSetGains(argsPtr->Kp, argsPtr->Ki, argsPtr->Kd, argsPtr->Kaw, argsPtr->Kff);
+//    steeringSetMode(argsPtr->steerMode);
 
     //Send confirmation packet, which is the exact same data payload as what was sent
     //Note that the destination is the hard-coded RADIO_DST_ADDR
@@ -316,23 +297,13 @@ static void cmdSetSteeringGains(unsigned char status, unsigned char length, unsi
 }
 
 static void cmdSoftwareReset(unsigned char status, unsigned char length, unsigned char *frame) {
-    char resetmsg[] = "RESET";
+    char resetmsg[] = "SOFTWARE RESET";
     int len = strlen(resetmsg);
-
-    MacPacket response;
-    response = radioRequestPacket(len);
-
-    macSetDestPan(response, RADIO_PAN_ID);
-    macSetDestAddr(response, RADIO_DST_ADDR);
-    Payload pld = macGetPayload(response);
-
-    paySetData(pld, len, (unsigned char*)resetmsg);
-    paySetType(pld, CMD_SOFTWARE_RESET);
-    paySetStatus(pld, 0);
     
-    while(!radioEnqueueTxPacket(response)) { radioProcess(); }
+    //Send notification message before reset
+    radioSendData(RADIO_DST_ADDR, 0, CMD_SOFTWARE_RESET, len, resetmsg, 0);
 
-#ifndef __DEBUG
+#ifndef __DEBUG //Prevent reset in debug mode
     __asm__ volatile ("reset");
 #endif
 }
@@ -499,23 +470,58 @@ static void cmdSetTailGains(unsigned char status, unsigned char length, unsigned
 }
 
 
-static void cmdSetThrustHall(unsigned char status, unsigned char length, unsigned char *frame) {
-    /*
-    //Unpack unsigned char* frame into structured values
-    PKT_UNPACK(_args_cmdSetThrustHall, argsPtr, frame);
-
-    hallPIDSetInput(0 , argsPtr->chan1, argsPtr->runtime1);
-    hallPIDOn(0);
-    hallPIDSetInput(1 , argsPtr->chan1, argsPtr->runtime2);
-    hallPIDOn(1);
-     */
-}
-
 static void cmdSetOLVibe(unsigned char status, unsigned char length, unsigned char *frame){
     //Unpack unsigned char* frame into structured values
     PKT_UNPACK(_args_cmdSetOLVibe, argsPtr, frame);
 
-    olVibeSetFrequency(argsPtr->channel, argsPtr->incr);
-    olVibeSetPhase(argsPtr->channel, argsPtr->phase);
-    olVibeSetAmplitude(argsPtr->channel, argsPtr->amplitude);
+//    olVibeSetFrequency(argsPtr->channel, argsPtr->incr);
+//    olVibeSetPhase(argsPtr->channel, argsPtr->phase);
+//    olVibeSetAmplitude(argsPtr->channel, argsPtr->amplitude);
+}
+
+
+
+////////////// FreeRTOS functions //////////////
+
+
+static portTASK_FUNCTION(vCmdHandlerTask, pvParameters) { //FreeRTOS task
+    //This task will execute at low priority, and handle "commands" that come in
+    // from the radio task. Radio task will push commands onto this task.
+
+    cmdStruct_t command;
+    portBASE_TYPE xStatus;
+
+    MacPacketStruct packetStruct;
+    MacPacket packet = &packetStruct;
+    Payload pld;
+
+    QueueHandle_t radioRXQueue = radioGetRXQueueHandle();
+
+    for (;;) { //Task loop
+        //Blocking wait on incoming command
+        xStatus = xQueueReceive(radioRXQueue, pktPtr, portMAX_DELAY);
+        //Note: packet has payload and payload->pld_data on heap
+
+        //Structure command
+        pld = macGetPayload(packet);
+        command.status = payGetStatus(pld);
+        command.cmdType = payGetType(pld);
+        command.length = payGetDataLength(pld);
+        command.frame = payGetData(pld);
+
+        //Invoke handler
+        if (command.cmdType < MAX_CMD_FUNC) {
+            cmd_func[command.cmdType](command.status, command.length, command.frame);
+        }
+
+        //Delete dynamic length parts of packet, which are on heap
+        vPortFree(pld->pld_data);
+        vPortFree(pld);
+
+        taskYIELD();
+    }
+}
+
+QueueHandle_t cmdGetQueueHandle(void) {
+    return cmdQueue;
 }
