@@ -60,6 +60,7 @@
 #include "imu_freertos.h"
 #include "telem-freertos.h"
 #include "radio_freertos.h"
+#include "cmd_freertos.h"
 
 /* Task priorities. */
 #define mainIMU_TASK_PRIORITY                           ( tskIDLE_PRIORITY + 10)
@@ -167,9 +168,9 @@ void prvStartupLights(void) {
 
 void radioTestSetup( unsigned portBASE_TYPE uxPriority);
 static portTASK_FUNCTION_PROTO(vRadioTestTask, pvParameters); //FreeRTOS task
-#include "cmd.h"
+#include "cmd_freertos.h"
 #include "version.h"
-#include "string.h"
+#include <string.h>
 
 void radioTestSetup( unsigned portBASE_TYPE uxPriority){
     portBASE_TYPE xStatus;
