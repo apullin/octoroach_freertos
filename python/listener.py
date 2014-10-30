@@ -27,18 +27,47 @@ def main():
     shared.ROBOTS = [R1] #This is necessary so callbackfunc can reference robots
     shared.xb = xb           #This is necessary so callbackfunc can halt before exit
     
-    pktNum = 1;
+    R1.runtime = 100;
     
-    while True:
-        try:
-            echoString = "Echo test #%d" % pktNum
-            print "Sending: ",echoString
-            pktNum = pktNum + 1
-            R1.sendEcho(echoString)
-            time.sleep(0.5)
-        except KeyboardInterrupt:
-                print "Stopping echo, going to listener mode"
-                break
+    #calculate the number of telemetry packets we expect
+    R1.numSamples = int(ceil(R1.telemSampleFreq * (R1.runtime) / 1000.0))
+    #allocate an array to write the downloaded telemetry data into
+    R1.imudata = [ [] ] * R1.numSamples
+    R1.moveq = []
+    R1.clAnnounce()
+    print "Telemtry samples to save: ",R1.numSamples
+    
+    R1.eraseFlashMem()
+
+    # Pause and wait to start run, including leadin time
+    print ""
+    print "  ***************************"
+    print "  *******    READY    *******"
+    print "  ***************************"
+    raw_input("  Press ENTER to start run ...")
+    print ""
+    
+    # Trigger telemetry save, which starts as soon as it is received
+    
+    #### Make when saving anything, this if is set ####
+    #### to the proper "SAVE_DATA"                 ####
+    
+    R1.startTelemetrySave()
+    
+    raw_input("Press Enter to start telemtry readback ...")
+    R1.downloadTelemetry(timeout = 5000, retry = False)
+    
+    #pktNum = 1;
+    # while True:
+        # try:
+            # echoString = "Echo test #%d" % pktNum
+            # print "Sending: ",echoString
+            # pktNum = pktNum + 1
+            # R1.sendEcho(echoString)
+            # time.sleep(0.5)
+        # except KeyboardInterrupt:
+                # print "Stopping echo, going to listener mode"
+                # break
 
     if EXIT_WAIT:  #Pause for a Ctrl+C if specified
         while True:

@@ -55,6 +55,7 @@
 #include <stdio.h>
 #include "settings.h"
 #include "sclock.h"
+#include "dfmem.h"
 
 //Module includes
 #include "imu_freertos.h"
@@ -63,11 +64,11 @@
 #include "cmd_freertos.h"
 
 /* Task priorities. */
-#define mainIMU_TASK_PRIORITY                           ( tskIDLE_PRIORITY + 10)
-#define mainTELEM_TASK_PRIORITY                         ( tskIDLE_PRIORITY + 9 )
-#define mainRADIOTEST_TASK_PRIORITY                     ( tskIDLE_PRIORITY + 8 )
-#define mainALIVETEST_TASK_PRIORITY                     ( tskIDLE_PRIORITY + 8 )
-#define mainRADIO_TASK_PRIORITY                         ( tskIDLE_PRIORITY + 7 )
+#define mainIMU_TASK_PRIORITY                           ( tskIDLE_PRIORITY + 9)
+#define mainTELEM_TASK_PRIORITY                         ( tskIDLE_PRIORITY + 8 )
+#define mainRADIOTEST_TASK_PRIORITY                     ( tskIDLE_PRIORITY + 7 )
+#define mainALIVETEST_TASK_PRIORITY                     ( tskIDLE_PRIORITY + 6 )
+#define mainRADIO_TASK_PRIORITY                         ( tskIDLE_PRIORITY + 5 )
 #define mainCMDHANDLER_TASK_PRIORITY                    ( tskIDLE_PRIORITY + 1 )
 //Private function prototypes
 static void prvSetupHardware(void);
@@ -97,14 +98,14 @@ int main(void) {
 //    imuSetup(mainIMU_TASK_PRIORITY);
 
     //Telemetry recording task, runs at 1Khz
-//    dfmemSetup();
-//    telemSetup(mainTELEM_TASK_PRIORITY);
+    dfmemSetup();
+    telemSetup(mainTELEM_TASK_PRIORITY);
 
     //Startup indicator cycle with LEDs
     prvStartupLights();
 
     //Test that sends WHOAMI's and ECHO's at 2Hz
-    radioTestSetup(mainRADIOTEST_TASK_PRIORITY);
+//    radioTestSetup(mainRADIOTEST_TASK_PRIORITY);
 
     //Lights test to show cpu is alive
     aliveTestSetup(mainALIVETEST_TASK_PRIORITY);
@@ -240,9 +241,8 @@ static portTASK_FUNCTION(vAliveTestTask, pvParameters){
     portBASE_TYPE xStatus;
 
     for (;;) {
-        //TODO: Is yielding neccesary here?
-        // Delay task in a periodic manner
-
+        
+        //LED heartbeat
         LED_RED = 1;
         vTaskDelayUntil(&xLastWakeTime, (150 / portTICK_RATE_MS));
         LED_RED = 0;

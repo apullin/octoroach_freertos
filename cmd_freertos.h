@@ -21,7 +21,7 @@ is invalid and void.
 #define CMD_SET_THRUST_OPENLOOP     0x80
 #define CMD_SET_THRUST_CLOSEDLOOP   0x81
 #define CMD_SET_PID_GAINS           0x82
-#define CMD_GET_PID_TELEMETRY       0x83
+
 #define CMD_SET_CTRLD_TURN_RATE     0x84
 #define CMD_STREAM_TELEMETRY        0x85
 #define CMD_SET_MOVE_QUEUE	    0x86

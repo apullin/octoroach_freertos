@@ -63,7 +63,7 @@ static void cmdNop(unsigned char status, unsigned char length, unsigned char *fr
 static void cmdSetThrustOpenLoop(unsigned char status, unsigned char length, unsigned char *frame);
 static void cmdSetThrustClosedLoop(unsigned char status, unsigned char length, unsigned char *frame);
 static void cmdSetPIDGains(unsigned char status, unsigned char length, unsigned char *frame);
-static void cmdGetPIDTelemetry(unsigned char status, unsigned char length, unsigned char *frame);
+
 static void cmdSetCtrldTurnRate(unsigned char status, unsigned char length, unsigned char *frame);
 static void cmdGetImuLoopZGyro(unsigned char status, unsigned char length, unsigned char *frame);
 static void cmdSetMoveQueue(unsigned char status, unsigned char length, unsigned char *frame);
@@ -118,7 +118,6 @@ unsigned int cmdSetup(unsigned portBASE_TYPE uxPriority) {
     cmd_func[CMD_SET_THRUST_OPENLOOP] = &cmdSetThrustOpenLoop;
     cmd_func[CMD_SET_THRUST_CLOSEDLOOP] = &cmdSetThrustClosedLoop;
     cmd_func[CMD_SET_PID_GAINS] = &cmdSetPIDGains;
-    cmd_func[CMD_GET_PID_TELEMETRY] = &cmdGetPIDTelemetry;
     cmd_func[CMD_SET_CTRLD_TURN_RATE] = &cmdSetCtrldTurnRate;
     cmd_func[CMD_STREAM_TELEMETRY] = &cmdGetImuLoopZGyro;
     cmd_func[CMD_SET_MOVE_QUEUE] = &cmdSetMoveQueue;
@@ -241,11 +240,6 @@ static void cmdSetPIDGains(unsigned char status, unsigned char length, unsigned 
 
 }
 
-static void cmdGetPIDTelemetry(unsigned char status, unsigned char length, unsigned char *frame) {
-    //Obsolete, not maintained
-   
-}
-
 static void cmdSetCtrldTurnRate(unsigned char status, unsigned char length, unsigned char *frame) {
     //Unpack unsigned char* frame into structured values
     PKT_UNPACK(_args_cmdSetCtrldTurnRate, argsPtr, frame);
@@ -338,13 +332,8 @@ static void cmdFlashReadback(unsigned char status, unsigned char length, unsigne
     //LED_YELLOW = 1;
     PKT_UNPACK(_args_cmdFlashReadback, argsPtr, frame);
 
-    //Horibble hack: Disable IMU while erading back telem
-    _T4IE = 0;
-
     telemReadbackSamples(argsPtr->samples);
 
-    //Horibble hack: Disable IMU while erading back telem
-    _T4IE = 1;
 }
 
 static void cmdSleep(unsigned char status, unsigned char length, unsigned char *frame) {

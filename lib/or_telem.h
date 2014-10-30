@@ -3,6 +3,7 @@
 //or_telem.h , OctoRoACH specific telemetry packet format header
 
 #include <stdint.h>
+#include "settings.h"
 
 // Data structure type
 typedef struct {
@@ -29,6 +30,6 @@ typedef struct {
     float yawAngle;
 } orTelemStruct_t;
 
-void orTelemGetData(unsigned char* ptr);
+void orTelemGetData(TELEM_TYPE* data);
 
 unsigned int orTelemGetSize();

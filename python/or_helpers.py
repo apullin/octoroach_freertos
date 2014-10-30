@@ -69,7 +69,7 @@ class Robot:
     numSamples = 0
     telemSampleFreq = 1000
     VERBOSE = True
-    telemFormatString = '%d,' + '%d,'*20 + '%f,%d,%d,%d,%d'
+    telemFormatString = '%d,' + '%d,'*20 + '%f'
     
     def __init__(self, address, xb):
         self.DEST_ADDR = address
