@@ -539,7 +539,7 @@ void trxCallback(unsigned int irq_cause) {
                 status.retry_number = 0;
                 //radioReturnPacket((MacPacket)carrayPopHead(tx_queue)); //Obsolete. Packet removed from queue at dequeue time
 //                xSemaphoreGive(xRadioMutex);
-                xSemaphoreGiveFromISR(xRadioMutex, &xHigherPriorityTaskWoken);;
+                xSemaphoreGiveFromISR(xRadioMutex, &xHigherPriorityTaskWoken);
                 radioSetStateRx();
             }
         }
@@ -760,11 +760,14 @@ static void radioProcessRx(void) {
 
     vPortFree(packet); //MacPacketStruct now copied into queue, pointing to payload on heap
 
-    xSemaphoreGive(xRadioMutex);
-
-//    if(!carrayAddTail(rx_queue, packet)) {
-//        radioReturnPacket(packet); // Check for failure
-//    }
+    static BaseType_t xHigherPriorityTaskWoken;
+    xSemaphoreGiveFromISR(xRadioMutex, &xHigherPriorityTaskWoken);
+    
+    if (xHigherPriorityTaskWoken != pdFALSE) {
+        // We can force a context switch here.  Context switching from an
+        // ISR uses port specific syntax.
+        taskYIELD();
+    }
 
 }
 
@@ -808,7 +811,7 @@ static portTASK_FUNCTION(vRadioTask, pvParameters) {
         
         radioProcess();
 
-        vTaskDelayUntil(&xLastWakeTime, (25 / portTICK_RATE_MS));
+        vTaskDelayUntil(&xLastWakeTime, (15 / portTICK_RATE_MS));
         
         taskYIELD();
     }

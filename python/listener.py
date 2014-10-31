@@ -27,7 +27,7 @@ def main():
     shared.ROBOTS = [R1] #This is necessary so callbackfunc can reference robots
     shared.xb = xb           #This is necessary so callbackfunc can halt before exit
     
-    R1.runtime = 100;
+    R1.runtime = 200;
     
     #calculate the number of telemetry packets we expect
     R1.numSamples = int(ceil(R1.telemSampleFreq * (R1.runtime) / 1000.0))
@@ -37,7 +37,7 @@ def main():
     R1.clAnnounce()
     print "Telemtry samples to save: ",R1.numSamples
     
-    R1.eraseFlashMem()
+    R1.eraseFlashMem(timeout = 15)
 
     # Pause and wait to start run, including leadin time
     print ""
@@ -55,7 +55,7 @@ def main():
     R1.startTelemetrySave()
     
     raw_input("Press Enter to start telemtry readback ...")
-    R1.downloadTelemetry(timeout = 5000, retry = False)
+    R1.downloadTelemetry(timeout = 2, retry = False)
     
     #pktNum = 1;
     # while True:

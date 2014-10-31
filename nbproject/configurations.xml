@@ -155,7 +155,7 @@
         <property key="enable-symbols" value="true"/>
         <property key="enable-unroll-loops" value="false"/>
         <property key="extra-include-directories"
-                  value=".;lib;FreeRTOS\Source\include;FreeRTOS\Source\portable\MPLAB\PIC24_dsPIC;..\imageproc-lib;source"/>
+                  value=".;.\lib;FreeRTOS\Source\include;FreeRTOS\Source\portable\MPLAB\PIC24_dsPIC;..\imageproc-lib;source"/>
         <property key="isolate-each-function" value="false"/>
         <property key="keep-inline" value="false"/>
         <property key="oXC16gcc-align-arr" value="false"/>

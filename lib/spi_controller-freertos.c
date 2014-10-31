@@ -105,8 +105,8 @@ static unsigned int spicon_ch1[1];
 static unsigned int spicon_ch2[2];
 
 /** Current port statuses */
-static SemaphoreHandle_t xSPI_CHAN1_Mutex;
-static SemaphoreHandle_t xSPI_CHAN2_Mutex;
+static SemaphoreHandle_t xSPI_CHAN1_Mutex = NULL;
+static SemaphoreHandle_t xSPI_CHAN2_Mutex = NULL;
 
 //static portTASK_FUNCTION_PROTO(vSPITask, pvParameters);
 
@@ -148,6 +148,7 @@ void spicSetupChannel2(unsigned char cs, unsigned int spiCon1) {
         xSPI_CHAN2_Mutex = xSemaphoreCreateMutex();
     }
     xSemaphoreGive(xSPI_CHAN2_Mutex);
+    
 }
 
 void spic1SetCallback(unsigned char cs, SpicIrqHandler handler) {
@@ -449,6 +450,9 @@ void __attribute__((interrupt, no_auto_psv)) _DMA5Interrupt(void) {
     portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
     _DMA5IF = 0;
 
+    // Call registered callback function
+//    int_handler_ch2[port_cs_line[1]](SPIC_TRANS_SUCCESS);
+
     xSemaphoreGiveFromISR(xSPI_CHAN2_Mutex, &xHigherPriorityTaskWoken );
     if (xHigherPriorityTaskWoken != pdFALSE) {
         taskYIELD();
@@ -457,6 +461,9 @@ void __attribute__((interrupt, no_auto_psv)) _DMA5Interrupt(void) {
 
 static void setupDMASet1 (void)
 {
+    memset(spic1_rx_buff, 0, SPIC1_RX_BUFF_LEN);
+    memset(spic1_tx_buff, 0, SPIC1_TX_BUFF_LEN);
+
     DMA2CON = DMA2_REGISTER_POST_INCREMENT & // Increment address after each byte
               DMA2_ONE_SHOT &                // Stop module after transfer complete
               PERIPHERAL_TO_DMA2 &           // Receive data from peripheral to memory
@@ -494,12 +501,16 @@ static void setupDMASet1 (void)
 
     priority = DMA3_INT_PRI_6;
     SetPriorityIntDMA3(priority);
-    DisableIntDMA3; // Only need one of the DMA interrupts
+//    DisableIntDMA3; // Only need one of the DMA interrupts
+    EnableIntDMA3;
     _DMA3IF  = 0;   // Clear DMA interrupt
 }
 
 static void setupDMASet2 (void)
 {
+    memset(spic2_rx_buff, 0, SPIC2_RX_BUFF_LEN);
+    memset(spic2_tx_buff, 0, SPIC2_TX_BUFF_LEN);
+
     DMA4CON = DMA4_REGISTER_POST_INCREMENT & // Increment address after ea/byte
               DMA4_ONE_SHOT &                // Stop module after transfer done
               PERIPHERAL_TO_DMA4 &           // Receive data from perip to mem
@@ -537,7 +548,8 @@ static void setupDMASet2 (void)
 
     priority = DMA5_INT_PRI_6;
     SetPriorityIntDMA5(priority);
-    DisableIntDMA5; // Only need one of the DMA interrupts
+//    DisableIntDMA5; // Only need one of the DMA interrupts
+    EnableIntDMA5;
     _DMA5IF  = 0;   // Clear DMA interrupt
 }
 
