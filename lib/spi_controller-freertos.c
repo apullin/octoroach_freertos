@@ -402,44 +402,53 @@ unsigned int spic2ReadBuffer(unsigned int len, unsigned char *buff) {
 // ISR for DMA2 interrupt, currently DMAR for channel 1
 void __attribute__((interrupt, no_auto_psv)) _DMA2Interrupt(void) {
 
-    portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
+//    portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
     _DMA2IF = 0;
 
     // Call registered callback function
     int_handler_ch1[port_cs_line[0]](SPIC_TRANS_SUCCESS);
+    
+    spic1EndTransaction();
 
-    xSemaphoreGiveFromISR(xSPI_CHAN1_Mutex, &xHigherPriorityTaskWoken );
-    if (xHigherPriorityTaskWoken != pdFALSE) {
-        taskYIELD();
-    }
+//    xSemaphoreGiveFromISR(xSPI_CHAN1_Mutex, &xHigherPriorityTaskWoken );
+//    if (xHigherPriorityTaskWoken != pdFALSE) {
+//        taskYIELD();
+//    }
     
 }
 
 // ISR for DMA3 interrupt, currently DMAW for channel 1
 void __attribute__((interrupt, no_auto_psv)) _DMA3Interrupt(void) {
     
-    portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
+//    portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
     _DMA3IF = 0;
 
-    xSemaphoreGiveFromISR(xSPI_CHAN1_Mutex, &xHigherPriorityTaskWoken );
-    if (xHigherPriorityTaskWoken != pdFALSE) {
-        taskYIELD();
-    }
+    // Call registered callback function
+    int_handler_ch1[port_cs_line[0]](SPIC_TRANS_SUCCESS);
+
+    spic1EndTransaction();
+
+//    xSemaphoreGiveFromISR(xSPI_CHAN1_Mutex, &xHigherPriorityTaskWoken );
+//    if (xHigherPriorityTaskWoken != pdFALSE) {
+//        taskYIELD();
+//    }
 }
 
 // ISR for DMA4 interrupt, currently DMAR for channel 2
 void __attribute__((interrupt, no_auto_psv)) _DMA4Interrupt(void) {
 
-    portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
+//    portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
     _DMA4IF = 0;
 
     // Call registered callback function
     int_handler_ch2[port_cs_line[1]](SPIC_TRANS_SUCCESS);
 
-    xSemaphoreGiveFromISR(xSPI_CHAN2_Mutex, &xHigherPriorityTaskWoken );
-    if (xHigherPriorityTaskWoken != pdFALSE) {
-        taskYIELD();
-    }
+    spic2EndTransaction();
+
+//    xSemaphoreGiveFromISR(xSPI_CHAN2_Mutex, &xHigherPriorityTaskWoken );
+//    if (xHigherPriorityTaskWoken != pdFALSE) {
+//        taskYIELD();
+//    }
     
 }
 
@@ -447,16 +456,19 @@ void __attribute__((interrupt, no_auto_psv)) _DMA4Interrupt(void) {
 // Currently not used, though it may be useful for debugging
 void __attribute__((interrupt, no_auto_psv)) _DMA5Interrupt(void) {
 
-    portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
+//    portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
     _DMA5IF = 0;
 
     // Call registered callback function
-//    int_handler_ch2[port_cs_line[1]](SPIC_TRANS_SUCCESS);
+    int_handler_ch2[port_cs_line[1]](SPIC_TRANS_SUCCESS);
 
-    xSemaphoreGiveFromISR(xSPI_CHAN2_Mutex, &xHigherPriorityTaskWoken );
-    if (xHigherPriorityTaskWoken != pdFALSE) {
-        taskYIELD();
-    }
+
+    spic2EndTransaction();
+
+//    xSemaphoreGiveFromISR(xSPI_CHAN2_Mutex, &xHigherPriorityTaskWoken );
+//    if (xHigherPriorityTaskWoken != pdFALSE) {
+//        taskYIELD();
+//    }
 }
 
 static void setupDMASet1 (void)
