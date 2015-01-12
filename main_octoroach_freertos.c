@@ -56,6 +56,7 @@
 #include "settings.h"
 #include "sclock.h"
 #include "dfmem.h"
+#include "settings.h"
 
 //Module includes
 #include "imu_freertos.h"
