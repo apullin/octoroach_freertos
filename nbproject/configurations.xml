@@ -69,6 +69,7 @@
           <itemPath>FreeRTOS/Source/queue.c</itemPath>
           <itemPath>FreeRTOS/Source/tasks.c</itemPath>
           <itemPath>FreeRTOS/Source/timers.c</itemPath>
+          <itemPath>FreeRTOS/Source/event_groups.c</itemPath>
         </logicalFolder>
       </logicalFolder>
       <logicalFolder name="f1" displayName="imageproc-lib" projectFiles="true">
@@ -160,8 +161,7 @@
         <property key="enable-short-double" value="false"/>
         <property key="enable-symbols" value="true"/>
         <property key="enable-unroll-loops" value="false"/>
-        <property key="extra-include-directories"
-                  value=".;lib;FreeRTOS/Source/include;FreeRTOS/Source/portable/MPLAB/PIC24_dsPIC;..\imageproc-lib;source;..\imageproc-settings"/>
+        <property key="extra-include-directories" value=""/>
         <property key="isolate-each-function" value="false"/>
         <property key="keep-inline" value="false"/>
         <property key="oXC16gcc-align-arr" value="false"/>
@@ -254,7 +254,8 @@
         <property key="warn-section-align" value="false"/>
       </C30-LD>
       <C30Global>
-        <property key="common-include-directories" value=""/>
+        <property key="common-include-directories"
+                  value=".;source;lib;FreeRTOS\Source\include;FreeRTOS\Source\portable\MPLAB\PIC24_dsPIC;..\imageproc-settings"/>
         <property key="dual-boot-partition" value="0"/>
         <property key="fast-math" value="false"/>
         <property key="generic-16-bit" value="false"/>
