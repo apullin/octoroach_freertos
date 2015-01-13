@@ -62,9 +62,9 @@
 #include "radio_freertos.h"
 
 /* Task priorities. */
-#define mainIMU_TASK_PRIORITY                           ( tskIDLE_PRIORITY + 4 )
-#define mainTELEM_TASK_PRIORITY                         ( tskIDLE_PRIORITY + 3 )
-#define mainRADIOTEST_TASK_PRIORITY                     ( tskIDLE_PRIORITY + 2 )
+#define mainIMU_TASK_PRIORITY                           ( tskIDLE_PRIORITY + 5 )
+#define mainTELEM_TASK_PRIORITY                         ( tskIDLE_PRIORITY + 4 )
+#define mainRADIOTEST_TASK_PRIORITY                     ( tskIDLE_PRIORITY + 3 )
 #define mainALIVETEST_TASK_PRIORITY                     ( tskIDLE_PRIORITY + 2 )
 #define mainRADIO_TASK_PRIORITY                         ( tskIDLE_PRIORITY + 1 )
 
@@ -102,11 +102,11 @@ int main(void) {
     //Startup indicator cycle with LEDs
     prvStartupLights();
 
-    //Test that sends WHOAMI's and ECHO's at 2Hz
-    radioTestSetup(mainRADIOTEST_TASK_PRIORITY);
-
     //Lights test to show cpu is alive
     aliveTestSetup(mainALIVETEST_TASK_PRIORITY);
+
+    //Test that sends WHOAMI's and ECHO's at 2Hz
+    radioTestSetup(mainRADIOTEST_TASK_PRIORITY);
 
     /* Start the created tasks running. */
     vTaskStartScheduler();
@@ -201,13 +201,14 @@ static portTASK_FUNCTION(vRadioTestTask, pvParameters){
 //        vTaskDelayUntil(&xLastWakeTime, (500 / portTICK_RATE_MS));
         //Send ECHO packet
         heapspace = xPortGetFreeHeapSize();
+        //heapspace = 666;
         sprintf(echoMsg, "FreeRTOS test packet #%lu, heap space: %d", pktNum, heapspace);
 //        sprintf(echoMsg, "test");
         pktNum++;
         radioSendData(RADIO_DST_ADDR, 0, CMD_ECHO, strlen(echoMsg), (unsigned char*)echoMsg, 0);
         LED_YELLOW = ~LED_YELLOW;
         //Delay 500ms
-        vTaskDelayUntil(&xLastWakeTime, (10 / portTICK_RATE_MS));
+        vTaskDelayUntil(&xLastWakeTime, (500 / portTICK_RATE_MS));
 
         taskYIELD();
     }

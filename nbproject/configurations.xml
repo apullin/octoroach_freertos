@@ -36,10 +36,13 @@
         <itemPath>lib/blob.h</itemPath>
         <itemPath>lib/telem-freertos.h</itemPath>
         <itemPath>lib/radio_freertos.h</itemPath>
+        <itemPath>lib/or_telem.h</itemPath>
+      </logicalFolder>
+      <logicalFolder name="f4" displayName="settings" projectFiles="true">
+        <itemPath>../imageproc-settings/settings.h</itemPath>
       </logicalFolder>
       <itemPath>FreeRTOSConfig.h</itemPath>
       <itemPath>../imageproc-lib/utils.h</itemPath>
-      <itemPath>settings.h</itemPath>
       <itemPath>cmd.h</itemPath>
     </logicalFolder>
     <logicalFolder name="LinkerScript"
@@ -91,8 +94,10 @@
         <itemPath>lib/telem-freertos.c</itemPath>
         <itemPath>lib/or_telem.c</itemPath>
         <itemPath>lib/radio_freertos.c</itemPath>
+        <itemPath>lib/traps.c</itemPath>
+        <itemPath>lib/traps_helper.s</itemPath>
       </logicalFolder>
-      <itemPath>main_octoroach_freertos.c.c</itemPath>
+      <itemPath>main_octoroach_freertos.c</itemPath>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"
@@ -105,6 +110,7 @@
     <Elem>../imageproc-lib</Elem>
     <Elem>../octoroach/lib</Elem>
     <Elem>lib</Elem>
+    <Elem>../imageproc-settings</Elem>
   </sourceRootList>
   <projectmakefile>Makefile</projectmakefile>
   <confs>
@@ -116,7 +122,7 @@
         <targetPluginBoard></targetPluginBoard>
         <platformTool>RealICEPlatformTool</platformTool>
         <languageToolchain>XC16</languageToolchain>
-        <languageToolchainVersion>1.21</languageToolchainVersion>
+        <languageToolchainVersion>1.23</languageToolchainVersion>
         <platform>3</platform>
       </toolsSet>
       <compileType>
@@ -124,6 +130,8 @@
           <linkerLibItems>
           </linkerLibItems>
         </linkerTool>
+        <archiverTool>
+        </archiverTool>
         <loading>
           <useAlternateLoadableFile>false</useAlternateLoadableFile>
           <parseOnProdLoad>false</parseOnProdLoad>
@@ -132,7 +140,7 @@
       </compileType>
       <makeCustomizationType>
         <makeCustomizationPreStepEnabled>true</makeCustomizationPreStepEnabled>
-        <makeCustomizationPreStep>python ..\imageproc-lib\version.py APULLIN-OCTOROACH-FREERTOS;EXPERIMENTAL</makeCustomizationPreStep>
+        <makeCustomizationPreStep>python ../imageproc-lib/prebuild.py ../imageproc-settings/settings.h</makeCustomizationPreStep>
         <makeCustomizationPostStepEnabled>false</makeCustomizationPostStepEnabled>
         <makeCustomizationPostStep></makeCustomizationPostStep>
         <makeCustomizationPutChecksumInUserID>false</makeCustomizationPutChecksumInUserID>
@@ -154,7 +162,7 @@
         <property key="enable-symbols" value="true"/>
         <property key="enable-unroll-loops" value="false"/>
         <property key="extra-include-directories"
-                  value=".;lib;FreeRTOS\Source\include;FreeRTOS\Source\portable\MPLAB\PIC24_dsPIC;..\imageproc-lib;source"/>
+                  value=".;lib;FreeRTOS\Source\include;FreeRTOS\Source\portable\MPLAB\PIC24_dsPIC;..\imageproc-lib;source;..\imageproc-settings"/>
         <property key="isolate-each-function" value="false"/>
         <property key="keep-inline" value="false"/>
         <property key="oXC16gcc-align-arr" value="false"/>
@@ -223,7 +231,7 @@
         <property key="general-code-protect" value="no_code_protect"/>
         <property key="general-write-protect" value="no_write_protect"/>
         <property key="generate-cross-reference-file" value="false"/>
-        <property key="heap-size" value="512"/>
+        <property key="heap-size" value="8192"/>
         <property key="input-libraries" value=""/>
         <property key="linker-stack" value="true"/>
         <property key="linker-symbols" value=""/>
@@ -241,12 +249,14 @@
         <property key="secure-flash" value="no_flash"/>
         <property key="secure-ram" value="no_ram"/>
         <property key="secure-write-protect" value="no_write_protect"/>
-        <property key="stack-size" value="64"/>
+        <property key="stack-size" value="240"/>
         <property key="symbol-stripping" value=""/>
         <property key="trace-symbols" value=""/>
         <property key="warn-section-align" value="false"/>
       </C30-LD>
       <C30Global>
+        <property key="common-include-directories" value=""/>
+        <property key="dual-boot-partition" value="0"/>
         <property key="fast-math" value="false"/>
         <property key="generic-16-bit" value="false"/>
         <property key="legacy-libc" value="false"/>
@@ -398,7 +408,6 @@
         <property key="UART 1" value="true"/>
         <property key="UART 2" value="true"/>
         <property key="debugoptions.useswbreakpoints" value="false"/>
-        <property key="firmware.download.all" value="false"/>
         <property key="hwtoolclock.frcindebug" value="false"/>
         <property key="hwtoolclock.instructionspeed" value="4"/>
         <property key="hwtoolclock.units" value="mips"/>
@@ -406,6 +415,7 @@
         <property key="memories.bootflash" value="true"/>
         <property key="memories.configurationmemory" value="true"/>
         <property key="memories.configurationmemory2" value="true"/>
+        <property key="memories.dataflash" value="true"/>
         <property key="memories.eeprom" value="true"/>
         <property key="memories.flashdata" value="true"/>
         <property key="memories.id" value="true"/>
@@ -420,11 +430,14 @@
         <property key="poweroptions.powerenable" value="false"/>
         <property key="programoptions.donoteraseauxmem" value="false"/>
         <property key="programoptions.eraseb4program" value="true"/>
+        <property key="programoptions.preservedataflash" value="false"/>
         <property key="programoptions.preserveeeprom" value="false"/>
         <property key="programoptions.preserveprogramrange" value="false"/>
         <property key="programoptions.preserveprogramrange.end" value="0x157ff"/>
         <property key="programoptions.preserveprogramrange.start" value="0x0"/>
         <property key="programoptions.preserveuserid" value="false"/>
+        <property key="programoptions.programcalmem" value="false"/>
+        <property key="programoptions.programuserotp" value="false"/>
         <property key="programoptions.usehighvoltageonmclr" value="false"/>
         <property key="programoptions.uselvpprogramming" value="false"/>
         <property key="tracecontrol.collectioninterval" value="1"/>
