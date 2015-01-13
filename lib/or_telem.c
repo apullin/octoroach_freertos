@@ -10,6 +10,7 @@
 
 //Module include
 #include "or_telem.h"
+#include "settings.h"
 
 //Library includes
 #include "utils.h"
@@ -37,33 +38,51 @@
 //extern pidObj steeringPID;
 //extern pidObj tailPID;
 
-void orTelemGetData(unsigned char* ptr) {
-    /////// Get XL data
-    orTelemStruct_t* tptr;
-    tptr = (orTelemStruct_t*) ptr;
+void orTelemGetData(TELEM_TYPE* data) {
  
 //    tptr->inputL = legCtrlGetInput(1); //TODO: Temporarily removed while porting
 //    tptr->inputR = legCtrlGetInput(2); //TODO: Temporarily removed while porting
-    tptr->dcA = tiHGetSignedDC(1);
-    tptr->dcB = tiHGetSignedDC(2);
-    tptr->dcC = tiHGetSignedDC(3);
-    tptr->dcD = tiHGetSignedDC(4);
-    tptr->gyroX = imuGetGyroXValue();
-    tptr->gyroY = imuGetGyroYValue();
-    tptr->gyroZ = imuGetGyroZValue();
-    tptr->gyroAvg =imuGetGyroZValueAvgDeg();
-    tptr->accelX = imuGetXLXValue();
-    tptr->accelY = imuGetXLYValue();
-    tptr->accelZ = imuGetXLZValue();
-    tptr->bemfA = adcGetMotorA();
-    tptr->bemfB = adcGetMotorB();
-    tptr->bemfC = adcGetMotorC();
-    tptr->bemfD = adcGetMotorD();
+//    tptr->dcA = tiHGetSignedDC(1);
+//    tptr->dcB = tiHGetSignedDC(2);
+//    tptr->dcC = tiHGetSignedDC(3);
+//    tptr->dcD = tiHGetSignedDC(4);
+//    tptr->gyroX = imuGetGyroXValue();
+//    tptr->gyroY = imuGetGyroYValue();
+//    tptr->gyroZ = imuGetGyroZValue();
+//    tptr->gyroAvg =imuGetGyroZValueAvgDeg();
+//    tptr->accelX = imuGetXLXValue();
+//    tptr->accelY = imuGetXLYValue();
+//    tptr->accelZ = imuGetXLZValue();
+//    tptr->bemfA = adcGetMotorA();
+//    tptr->bemfB = adcGetMotorB();
+//    tptr->bemfC = adcGetMotorC();
+//    tptr->bemfD = adcGetMotorD();
 //    tptr->steerIn = steeringGetInput(); //TODO: Temporarily removed while porting
 //    tptr->steerOut = steeringGetInput(); //TODO: Temporarily removed while porting
-    tptr->Vbatt = adcGetVbatt();
-    tptr->yawAngle = imuGetBodyZPositionDeg();
+//    tptr->Vbatt = adcGetVbatt();
+//    tptr->yawAngle = imuGetBodyZPositionDeg();
 
+    data->inputL = 1; //TODO: Temporarily removed while porting
+    data->inputR = 2; //TODO: Temporarily removed while porting
+    data->dcA = 3;
+    data->dcB = 4;
+    data->dcC = 5;
+    data->dcD = 6;
+    data->gyroX = 7;
+    data->gyroY = 8;
+    data->gyroZ = 9;
+    data->gyroAvg = 10;
+    data->accelX = 11;
+    data->accelY = 12;
+    data->accelZ = 13;
+    data->bemfA = 14;
+    data->bemfB = 15;
+    data->bemfC = 16;
+    data->bemfD = 17;
+    data->steerIn = 18; //TODO: Temporarily removed while porting
+    data->steerOut = 19; //TODO: Temporarily removed while porting
+    data->Vbatt = 20;
+    data->yawAngle = 21.0;
 }
 
 //This may be unneccesary, since the telemtry type isn't totally anonymous

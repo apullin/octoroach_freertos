@@ -55,11 +55,14 @@
 #include <stdio.h>
 #include "settings.h"
 #include "sclock.h"
+#include "dfmem.h"
+#include "settings.h"
 
 //Module includes
 #include "imu_freertos.h"
 #include "telem-freertos.h"
 #include "radio_freertos.h"
+#include "cmd_freertos.h"
 
 //Ensure that imageproc-lib is a FreeRTOS branch
 #ifndef _IMAGEPROC_LIB_FREERTOS
@@ -67,12 +70,12 @@
 #endif
 
 /* Task priorities. */
-#define mainIMU_TASK_PRIORITY                           ( tskIDLE_PRIORITY + 5 )
-#define mainTELEM_TASK_PRIORITY                         ( tskIDLE_PRIORITY + 4 )
-#define mainRADIOTEST_TASK_PRIORITY                     ( tskIDLE_PRIORITY + 3 )
-#define mainALIVETEST_TASK_PRIORITY                     ( tskIDLE_PRIORITY + 2 )
-#define mainRADIO_TASK_PRIORITY                         ( tskIDLE_PRIORITY + 1 )
-
+#define mainIMU_TASK_PRIORITY                           ( tskIDLE_PRIORITY + 9)
+#define mainTELEM_TASK_PRIORITY                         ( tskIDLE_PRIORITY + 8 )
+#define mainRADIOTEST_TASK_PRIORITY                     ( tskIDLE_PRIORITY + 7 )
+#define mainALIVETEST_TASK_PRIORITY                     ( tskIDLE_PRIORITY + 6 )
+#define mainRADIO_TASK_PRIORITY                         ( tskIDLE_PRIORITY + 5 )
+#define mainCMDHANDLER_TASK_PRIORITY                    ( tskIDLE_PRIORITY + 1 )
 //Private function prototypes
 static void prvSetupHardware(void);
 
@@ -101,20 +104,25 @@ int main(void) {
 //    imuSetup(mainIMU_TASK_PRIORITY);
 
     //Telemetry recording task, runs at 1Khz
-//    dfmemSetup();
-//    telemSetup(mainTELEM_TASK_PRIORITY);
+    dfmemSetup();
+    telemSetup(mainTELEM_TASK_PRIORITY);
 
     //Startup indicator cycle with LEDs
     prvStartupLights();
 
     //Lights test to show cpu is alive
     aliveTestSetup(mainALIVETEST_TASK_PRIORITY);
+    
+    //Cmd Handler task
+    cmdSetup(mainCMDHANDLER_TASK_PRIORITY);
+
 
     //Test that sends WHOAMI's and ECHO's at 2Hz
     radioTestSetup(mainRADIOTEST_TASK_PRIORITY);
 
     /* Start the created tasks running. */
     vTaskStartScheduler();
+
     /* Execution will only reach here if there was insufficient heap to
     start the scheduler. */
     for (;;);
@@ -170,7 +178,7 @@ void radioTestSetup( unsigned portBASE_TYPE uxPriority);
 static portTASK_FUNCTION_PROTO(vRadioTestTask, pvParameters); //FreeRTOS task
 #include "cmd.h"
 #include "version.h"
-#include "string.h"
+#include <string.h>
 
 void radioTestSetup( unsigned portBASE_TYPE uxPriority){
     portBASE_TYPE xStatus;
@@ -241,9 +249,8 @@ static portTASK_FUNCTION(vAliveTestTask, pvParameters){
     portBASE_TYPE xStatus;
 
     for (;;) {
-        //TODO: Is yielding neccesary here?
-        // Delay task in a periodic manner
-
+        
+        //LED heartbeat
         LED_RED = 1;
         vTaskDelayUntil(&xLastWakeTime, (150 / portTICK_RATE_MS));
         LED_RED = 0;

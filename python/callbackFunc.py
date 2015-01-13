@@ -10,7 +10,7 @@ is invalid and void.
 
 from lib import command
 from struct import pack,unpack
-import time, sys
+import time, sys, traceback
 
 import shared
 
@@ -28,7 +28,7 @@ pktFormat = { \
     command.SET_STEERING_GAINS:     '6h', \
     command.SOFTWARE_RESET:         '', \
     #command.SPECIAL_TELEMETRY:      '=LLhhhhhhhhhhhhhhhhhhhhf', \
-    command.SPECIAL_TELEMETRY:      '=LLhhhhhhhhhhhhhhhhhhhhflllh', \
+    command.SPECIAL_TELEMETRY:      '=LLhhhhhhhhhhhhhhhhhhhhf', \
     command.ERASE_SECTORS:          'L', \
     command.FLASH_READBACK:         '', \
     command.SLEEP:                  'b', \
@@ -134,7 +134,7 @@ def xbee_received(packet):
         # SPECIAL_TELEMETRY
         elif type == command.SPECIAL_TELEMETRY:
             shared.pkts = shared.pkts + 1
-            #print "Special Telemetry Data Packet, ",shared.pkts
+            #print "Special Telemetry Data Packet, ",shared.pkts, " len: ",len(data)
             datum = unpack(pattern, data)
             datum = list(datum)
             telem_index = datum.pop(0) #pop removes this from data array
@@ -203,9 +203,12 @@ def xbee_received(packet):
     
     except Exception as args:
         print "\nGeneral exception from callbackfunc:",args
-        print "Attemping to exit cleanly..."
+        print "\n    ******    TRACEBACK    ******    "
+        traceback.print_exc()
+        print "    *****************************    \n"
+        print "Attempting to exit cleanly..."
         shared.xb.halt()
-        sharedser.close()
+        shared.ser.close()
         sys.exit()
 
 

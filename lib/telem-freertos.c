@@ -15,7 +15,7 @@
 #include "radio.h"
 #include "at86rf231_driver.h"
 #include "sclock.h"
-//#include "cmd.h"
+#include "cmd_freertos.h"
 
 #include <string.h> //for memcpy
 //#include "debugpins.h"
@@ -25,7 +25,7 @@
 //////////      FreeRTOS config        ///////////
 //////////////////////////////////////////////////
 #define TELEM_TASK_PERIOD_MS      1
-#define TELEM_QUEUE_SIZE          87
+#define TELEM_QUEUE_SIZE          8
 
 //////////////////////////////////////////////////
 //////////      Private variables      ///////////
@@ -119,13 +119,16 @@ void telemReadbackSamples(unsigned long numSamples) {
         //Retireve data from flash
         telemGetSample(i, sizeof (sampleData), (unsigned char*) (&sampleData));
         //Reliable send, with linear backoff
-        do {
-            //debugpins1_set();
-            telemSendDataDelay(&sampleData, delaytime_ms);
-            //Linear backoff
-            delaytime_ms += 0;
-            //debugpins1_clr();
-        } while (trxGetLastACKd() == 0);
+
+        radioSendData(RADIO_DST_ADDR, 0, CMD_SPECIAL_TELEMETRY, telemPacketSize,
+                (unsigned char *)(&sampleData), 0);
+//        do {
+//            //debugpins1_set();
+//            telemSendDataDelay(&sampleData, delaytime_ms);
+//            //Linear backoff
+//            delaytime_ms += 0;
+//            //debugpins1_clr();
+//        } while (trxGetLastACKd() == 0);
         
         delaytime_ms = READBACK_DELAY_TIME_MS;
     }
@@ -133,7 +136,6 @@ void telemReadbackSamples(unsigned long numSamples) {
 
 void telemSendDataDelay(telemStruct_t* sample, int delaytime_ms) {
     //radioSendData(RADIO_DST_ADDR, 0, CMD_SPECIAL_TELEMETRY, telemPacketSize, (unsigned char *)sample, 0);
-#define CMD_SPECIAL_TELEMETRY 0 //placeholder for now, to test compile; avoids
     radioSendData(RADIO_DST_ADDR, 0, CMD_SPECIAL_TELEMETRY, telemPacketSize, (unsigned char *)sample, 0);
     delay_ms(delaytime_ms); // allow radio transmission time
 }
@@ -146,7 +148,7 @@ void telemEnqueueData(telemStruct_t * telemPkt) {
     portBASE_TYPE xStatus;
 
     //Enqueue data; TOD: Should this fail immediately, or after 1 period?
-    xStatus = xQueueSendToBack(telemQueue, telemPkt, TELEM_TASK_PERIOD_MS);
+    xStatus = xQueueSendToBack(telemQueue, telemPkt, portMAX_DELAY);
     //xStatus = xQueueSendToBack(telemQueue, telemPkt, 0);
 }
 
@@ -195,7 +197,7 @@ void telemErase(unsigned long numSamples) {
     //Leadout flash, should blink faster than above, indicating the last sector
     while (!dfmemIsReady()) {
         LED_GREEN = ~LED_GREEN;
-        delay_ms(50);
+//        delay_ms(50);
     }
     LED_GREEN = 0; //Green LED off
 
@@ -236,6 +238,7 @@ void telemSetStartTime(void) {
 //This task will only recieve telemetry packets from a queue and write them to the dfmem.
 //This decouples the telemetry recording from the writing to dfmem.
 //void vTelemWriteTask(void *pvParameters) { //FreeRTOS task
+
 static portTASK_FUNCTION(vTelemWriteTask, pvParameters) { //FreeRTOS task
 
     telemStruct_t data;
@@ -243,14 +246,19 @@ static portTASK_FUNCTION(vTelemWriteTask, pvParameters) { //FreeRTOS task
 
     for (;;) { //Task loop
         //Blocking read from
-        xStatus = xQueueReceive(telemQueue, (unsigned char*)(&data), portMAX_DELAY);
+        xStatus = xQueueReceive(telemQueue, (unsigned char*) (&data), portMAX_DELAY);
         //Write to dfmem
-        dfmemSave((unsigned char*)(&data), sizeof(data));
+        dfmemSave((unsigned char*) (&data), sizeof (data));
+        if (samplesToSave == 0) {
+            //Done sampling, commit last buffer
+            dfmemSync(); //Todo: more robust way to detect end of a telemtry savE?
+        }
     }
 }
 
 
 //void vTelemTask(void *pvParameters) { //FreeRTOS task
+
 static portTASK_FUNCTION(vTelemTask, pvParameters) { //FreeRTOS task
 
     telemStruct_t sample;
@@ -261,52 +269,26 @@ static portTASK_FUNCTION(vTelemTask, pvParameters) { //FreeRTOS task
 
     for (;;) { //Task loop
 
-        //skipcounter decrements to 0, triggering a telemetry save, and resets
-        // value of skicounter
-        if (skipcounter == 0) {
-            if (samplesToSave > 0) {
-                sample.timestamp = sclockGetTime() - telemStartTime;
-                sample.sampleIndex = sampIdx;
-                //Write telemetry data into packet
-                TELEMPACKFUNC((unsigned char*) &(sample.telemData));
+        if (samplesToSave > 0) {
+            LED_YELLOW = 1;
+            sample.timestamp = sclockGetTime() - telemStartTime;
+            sample.sampleIndex = sampIdx;
+            //Write telemetry data into packet
+            TELEMPACKFUNC(&(sample.telemData));
 
-                telemEnqueueData(&sample);
-                samplesToSave--;
-                sampIdx++;
+            telemEnqueueData(&sample);
+            samplesToSave--;
+            sampIdx++;
+
+            if(samplesToSave < 20){
+                Nop();
+                Nop();
             }
-            //Reset value of skip counter
-            skipcounter = telemSkipNum;
+
         }
-        //Always decrement skip counter at every interrupt, at 300Hz
-        //This way, if telemSkipNum = 1, a sample is saved at every interrupt.
-        skipcounter--;
-
-
-        /*
-         * Streaming currently disabled for FreeRTOS port
-        ////////////////////   STREAMING SECTION
-        if (telemStreamingFlag == TELEM_STREAM_ON) {
-            if (streamSkipCounter == 0) {
-                if (samplesToStream > 0) {
-                    sample.timestamp = sclockGetTime() - telemStartTime;
-                    sample.sampleIndex = sampIdx;
-                    //Write telemetry data into packet
-                    TELEMPACKFUNC((unsigned char*) &(telemBuffer.telemData));
-                    sampIdx++;
-
-                    radioSendData(RADIO_DST_ADDR, 0, CMD_STREAM_TELEMETRY,
-                            telemPacketSize, (unsigned char*)(&sample), 0);
-
-                    samplesToStream--;
-                } else {
-                    telemStreamingFlag = TELEM_STREAM_OFF;
-                }
-                //Reset value of skip counter
-                streamSkipCounter = streamSkipNum;
-            }
-            streamSkipCounter--; //decrement always, at 300hz
+        else{
+            LED_YELLOW = 0;
         }
-        */
 
         // Delay task in a periodic manner
         vTaskDelayUntil(&xLastWakeTime, (TELEM_TASK_PERIOD_MS / portTICK_RATE_MS));

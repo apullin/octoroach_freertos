@@ -69,7 +69,7 @@ class Robot:
     numSamples = 0
     telemSampleFreq = 1000
     VERBOSE = True
-    telemFormatString = '%d,' + '%d,'*20 + '%f,%d,%d,%d,%d'
+    telemFormatString = '%d,' + '%d,'*20 + '%f'
     
     def __init__(self, address, xb):
         self.DEST_ADDR = address
@@ -326,10 +326,10 @@ class Robot:
         self.findFileName()
         self.writeFileHeader()
         fileout = open(self.dataFileName, 'a')
-        sanitized = [item for item in self.imudata if len(item) == 22+4]
+        sanitized = filter(None, self.imudata)
 
-        temp = np.array(sanitized)
-        print "Shape: ",temp.shape
+        #temp = np.array(sanitized)
+        #print "Shape: ",temp.shape
         
         np.savetxt(fileout , np.array(sanitized), self.telemFormatString, delimiter = ',')
         #try:
