@@ -20,6 +20,7 @@
         <itemPath>FreeRTOS/Source/include/semphr.h</itemPath>
         <itemPath>FreeRTOS/Source/include/task.h</itemPath>
         <itemPath>FreeRTOS/Source/include/timers.h</itemPath>
+        <itemPath>FreeRTOS/Source/include/deprecated_definitions.h</itemPath>
       </logicalFolder>
       <logicalFolder name="f2" displayName="imagepoc-lib" projectFiles="true">
         <itemPath>../imageproc-lib/sclock.h</itemPath>
@@ -89,12 +90,12 @@
         <itemPath>../imageproc-lib/at86rf231_driver.c</itemPath>
       </logicalFolder>
       <logicalFolder name="f4" displayName="lib" projectFiles="true">
-        <itemPath>lib/imu_freertos.c</itemPath>
         <itemPath>lib/spi_controller-freertos.c</itemPath>
         <itemPath>lib/blob.c</itemPath>
         <itemPath>lib/telem-freertos.c</itemPath>
         <itemPath>lib/or_telem.c</itemPath>
         <itemPath>lib/radio_freertos.c</itemPath>
+        <itemPath>lib/imu_freertos.c</itemPath>
       </logicalFolder>
       <itemPath>cmd_freertos.c</itemPath>
       <itemPath>main_octoroach_freertos.c</itemPath>
@@ -161,7 +162,8 @@
         <property key="enable-short-double" value="false"/>
         <property key="enable-symbols" value="true"/>
         <property key="enable-unroll-loops" value="false"/>
-        <property key="extra-include-directories" value=""/>
+        <property key="extra-include-directories"
+                  value=".;lib;source;FreeRTOS;FreeRTOS\Source\include;FreeRTOS\Source\portable\MPLAB\PIC24_dsPIC;..\imageproc-settings;..\imageproc-lib"/>
         <property key="isolate-each-function" value="false"/>
         <property key="keep-inline" value="false"/>
         <property key="oXC16gcc-align-arr" value="false"/>
@@ -255,7 +257,7 @@
       </C30-LD>
       <C30Global>
         <property key="common-include-directories"
-                  value=".;source;lib;FreeRTOS\Source\include;FreeRTOS\Source\portable\MPLAB\PIC24_dsPIC;..\imageproc-settings"/>
+                  value=".;source;lib;FreeRTOS\Source\include;FreeRTOS\Source\portable\MPLAB\PIC24_dsPIC;..\imageproc-lib;..\imageproc-settings"/>
         <property key="dual-boot-partition" value="0"/>
         <property key="fast-math" value="false"/>
         <property key="generic-16-bit" value="false"/>
