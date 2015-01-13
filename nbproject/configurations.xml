@@ -20,6 +20,7 @@
         <itemPath>FreeRTOS/Source/include/semphr.h</itemPath>
         <itemPath>FreeRTOS/Source/include/task.h</itemPath>
         <itemPath>FreeRTOS/Source/include/timers.h</itemPath>
+        <itemPath>FreeRTOS/Source/include/deprecated_definitions.h</itemPath>
       </logicalFolder>
       <logicalFolder name="f2" displayName="imagepoc-lib" projectFiles="true">
         <itemPath>../imageproc-lib/sclock.h</itemPath>

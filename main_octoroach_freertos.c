@@ -213,7 +213,7 @@ static portTASK_FUNCTION(vRadioTestTask, pvParameters){
         radioSendData(RADIO_DST_ADDR, 0, CMD_ECHO, strlen(echoMsg), (unsigned char*)echoMsg, 0);
         LED_YELLOW = ~LED_YELLOW;
         //Delay 500ms
-        vTaskDelayUntil(&xLastWakeTime, (500 / portTICK_RATE_MS));
+        vTaskDelayUntil(&xLastWakeTime, (200 / portTICK_RATE_MS));
 
         taskYIELD();
     }

@@ -23,6 +23,7 @@ SAVE_DATA1 = False
 RESET_R1 = False
 
 EXIT_WAIT   = True
+SEND_PKTS   = False
 
 def main():    
     xb = setupSerial(shared.BS_COMPORT, shared.BS_BAUDRATE)
@@ -30,18 +31,21 @@ def main():
     R1 = Robot('\x20\x52', xb)
     
     shared.ROBOTS = [R1] #This is necessary so callbackfunc can reference robots
-    shared.xb = xb           #This is necessary so callbackfunc can halt before exit
+    shared.xb = xb       #This is necessary so callbackfunc can halt before exit
     
-    while True:
-        try:
-            echoString = "Echo test #%d" % pktNum
-            print "Sending: ",echoString
-            pktNum = pktNum + 1
-            R1.sendEcho(echoString)
-            time.sleep(random.random()*3.0)
-        except KeyboardInterrupt:
-                print "Stopping echo, going to listener mode"
-                break
+    pktNum = 1
+    
+    if SEND_PKTS:
+        while True:
+            try:
+                echoString = "Echo test #%d" % pktNum
+                print "Sending: ",echoString
+                pktNum = pktNum + 1
+                R1.sendEcho(echoString)
+                time.sleep(random.random()*1.0)
+            except KeyboardInterrupt:
+                    print "Stopping echo, going to listener mode"
+                    break
 
     if EXIT_WAIT:  #Pause for a Ctrl+C if specified
         while True:
