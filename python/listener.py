@@ -6,9 +6,14 @@ Contents of this file are copyright Andrew Pullin, 2013
 
 """
 from lib import command
-import time,sys,traceback
+import time,sys,os,traceback
+import random
 import serial
-import shared
+
+# Path to imageproc-settings repo must be added
+sys.path.append(os.path.dirname("../../imageproc-settings/"))
+sys.path.append(os.path.dirname("../imageproc-settings/"))  
+import shared_multi as shared
 
 from or_helpers import *
 
@@ -26,6 +31,17 @@ def main():
     
     shared.ROBOTS = [R1] #This is necessary so callbackfunc can reference robots
     shared.xb = xb           #This is necessary so callbackfunc can halt before exit
+    
+    while True:
+        try:
+            echoString = "Echo test #%d" % pktNum
+            print "Sending: ",echoString
+            pktNum = pktNum + 1
+            R1.sendEcho(echoString)
+            time.sleep(random.random()*3.0)
+        except KeyboardInterrupt:
+                print "Stopping echo, going to listener mode"
+                break
 
     if EXIT_WAIT:  #Pause for a Ctrl+C if specified
         while True:
