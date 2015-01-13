@@ -61,6 +61,11 @@
 #include "telem-freertos.h"
 #include "radio_freertos.h"
 
+//Ensure that imageproc-lib is a FreeRTOS branch
+#ifndef _IMAGEPROC_LIB_FREERTOS
+#error "Switch to FreeRTOS branch of imageproc-lib"
+#endif
+
 /* Task priorities. */
 #define mainIMU_TASK_PRIORITY                           ( tskIDLE_PRIORITY + 5 )
 #define mainTELEM_TASK_PRIORITY                         ( tskIDLE_PRIORITY + 4 )
