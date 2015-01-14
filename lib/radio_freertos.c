@@ -434,7 +434,7 @@ unsigned char radioSendData (unsigned int dest_addr, unsigned char status,
             return EXIT_FAILURE;
         } else {   
             while ( pkt == NULL ) {
-               radioProcess();
+               //radioProcess(); //radio task now handles this
                pkt = radioRequestPacket(datalen);
             }
         }

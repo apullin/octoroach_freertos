@@ -108,10 +108,9 @@
     </logicalFolder>
   </logicalFolder>
   <sourceRootList>
-    <Elem>FreeRTOS</Elem>
+    <Elem>.</Elem>
     <Elem>../imageproc-lib</Elem>
     <Elem>../octoroach/lib</Elem>
-    <Elem>lib</Elem>
     <Elem>../imageproc-settings</Elem>
   </sourceRootList>
   <projectmakefile>Makefile</projectmakefile>
@@ -164,7 +163,7 @@
         <property key="enable-symbols" value="true"/>
         <property key="enable-unroll-loops" value="false"/>
         <property key="extra-include-directories"
-                  value=".;lib;FreeRTOS\Source\include;FreeRTOS\Source\portable\MPLAB\PIC24_dsPIC;..\imageproc-lib;source;..\imageproc-settings"/>
+                  value=".;lib;source;FreeRTOS\Source\include;FreeRTOS\Source\portable\MPLAB\PIC24_dsPIC;..\imageproc-lib;..\imageproc-settings"/>
         <property key="isolate-each-function" value="false"/>
         <property key="keep-inline" value="false"/>
         <property key="oXC16gcc-align-arr" value="false"/>
