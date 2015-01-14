@@ -176,7 +176,7 @@ void prvStartupLights(void) {
 
 void radioTestSetup( unsigned portBASE_TYPE uxPriority);
 static portTASK_FUNCTION_PROTO(vRadioTestTask, pvParameters); //FreeRTOS task
-#include "cmd.h"
+#include "cmd_freertos.h"
 #include "version.h"
 #include <string.h>
 
@@ -221,7 +221,7 @@ static portTASK_FUNCTION(vRadioTestTask, pvParameters){
         radioSendData(RADIO_DST_ADDR, 0, CMD_ECHO, strlen(echoMsg), (unsigned char*)echoMsg, 0);
         LED_YELLOW = ~LED_YELLOW;
         //Delay 500ms
-        vTaskDelayUntil(&xLastWakeTime, (200 / portTICK_RATE_MS));
+        vTaskDelayUntil(&xLastWakeTime, (500 / portTICK_RATE_MS));
 
         taskYIELD();
     }

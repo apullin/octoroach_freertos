@@ -23,7 +23,7 @@ SAVE_DATA1 = False
 RESET_R1 = False
 
 EXIT_WAIT   = True
-SEND_PKTS   = False
+SEND_PKTS   = True
 
 def main():    
     xb = setupSerial(shared.BS_COMPORT, shared.BS_BAUDRATE)
@@ -42,7 +42,8 @@ def main():
                 print "Sending: ",echoString
                 pktNum = pktNum + 1
                 R1.sendEcho(echoString)
-                time.sleep(random.random()*1.0)
+                #time.sleep(random.random()*3.0)
+                time.sleep(0.6)
             except KeyboardInterrupt:
                     print "Stopping echo, going to listener mode"
                     break
