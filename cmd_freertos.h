@@ -1,5 +1,5 @@
 /******************************************************************************
-* Name: cmd.h
+* Name: cmd_freertos.h
 * Desc: application specific command definitions are defined here.
 * Date: 2010-07-10
 * Author: stanbaek, apullin
@@ -11,9 +11,10 @@ is invalid and void.
 #ifndef __CMD_H
 #define __CMD_H
 
-#include "FreeRTOS.h"
+//#include "FreeRTOS.h"
+//#include "queue.h"
 
-#include "cmd_const.h"
+//#include "cmd_const.h"
 
 #define CMD_VECTOR_SIZE				0xFF //full length vector
 #define MAX_CMD_FUNC				0x9F
@@ -24,7 +25,7 @@ is invalid and void.
 
 #define CMD_SET_CTRLD_TURN_RATE     0x84
 #define CMD_STREAM_TELEMETRY        0x85
-#define CMD_SET_MOVE_QUEUE	    0x86
+#define CMD_SET_MOVE_QUEUE          0x86
 #define CMD_SET_STEERING_GAINS      0x87
 #define CMD_SOFTWARE_RESET          0x88
 #define CMD_SPECIAL_TELEMETRY       0x89

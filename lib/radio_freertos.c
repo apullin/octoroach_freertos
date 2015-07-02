@@ -53,8 +53,9 @@
 #include "mac_packet.h"
 #include "sclock.h"
 #include "timer.h"
+#include "cmd_freertos.h"
 
-#include "at86rf231.h"  // Current transceiver IC
+#include "at86rf233.h"  // Current transceiver IC
 #include "at86rf231_driver.h"
 
 #include <stdlib.h>
@@ -802,17 +803,74 @@ portBASE_TYPE vStartRadioTask( unsigned portBASE_TYPE uxPriority){
 }
 
 
+//static portTASK_FUNCTION(vRadioTask, pvParameters) {
+//    portTickType xLastWakeTime;
+//    xLastWakeTime = xTaskGetTickCount();
+////    portBASE_TYPE xStatus;
+//
+//    for (;;) {
+//        
+//        radioProcess();
+//
+//        vTaskDelayUntil(&xLastWakeTime, (15 / portTICK_RATE_MS));
+//        
+//        taskYIELD();
+//    }
+//}
+
 static portTASK_FUNCTION(vRadioTask, pvParameters) {
-    portTickType xLastWakeTime;
-    xLastWakeTime = xTaskGetTickCount();
-//    portBASE_TYPE xStatus;
+
+    //Pseudo code
+    /* If RX queue is not empty (nonblocking)
+     * take packets, push to CMD queue (or other loc?)
+     * Only dequeue from RX if push successful.
+     * 
+     */
+
+    /*
+     If TX queue is not empty,
+     * transition to TX mode
+     * send all packets
+     * transition back to RX mode
+     */
+
+    MacPacketStruct pkt;
+
+    QueueHandle_t cmdQueue = cmdGetQueueHandle();
 
     for (;;) {
-        
-        radioProcess();
 
-        vTaskDelayUntil(&xLastWakeTime, (15 / portTICK_RATE_MS));
-        
+        ///// Handle RX queue
+        while (!radioRxQueueEmpty()) {
+
+            xQueuePeek(radioRXQueue, &pkt, 0);
+            //Put some logic to decide where packet should go
+            if (uxQueueSpacesAvailable(cmdQueue) > 0) {
+                xQueueReceive(radioRXQueue, &pkt, 0); //remove from RX queue
+                xQueueSendToBack(cmdQueue, &pkt, 0); //dispatch to cmd queue
+            }
+
+        } //RX queue should be empty now
+
         taskYIELD();
+
+        ///// Handle TX queue
+        while (!radioTxQueueEmpty()) {
+
+            // If radio is receiving, we have to wait
+            if (!radioSetStateTx()) {
+                taskYIELD();
+            }
+            radioProcessTx(); // Process outgoing buffer
+            return;
+
+        }
+
+        // Default to Rx state
+        if (!radioSetStateRx()) {
+            return;
+        }
+        taskYIELD();
+
     }
 }
