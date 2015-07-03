@@ -11,10 +11,10 @@ is invalid and void.
 #ifndef __CMD_H
 #define __CMD_H
 
-//#include "FreeRTOS.h"
-//#include "queue.h"
+#include "FreeRTOS.h"
+#include "queue.h"
 
-//#include "cmd_const.h"
+#include "cmd_const.h"
 
 #define CMD_VECTOR_SIZE				0xFF //full length vector
 #define MAX_CMD_FUNC				0x9F

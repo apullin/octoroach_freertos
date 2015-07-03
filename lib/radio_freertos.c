@@ -48,15 +48,13 @@
 
 //Library includes
 #include "utils.h"
-#include "init_default.h"
-#include "radio_freertos.h"
+#include "at86rf233.h"  // Current transceiver IC
+#include "at86rf231_driver.h"
+#include "cmd_freertos.h"
 #include "mac_packet.h"
 #include "sclock.h"
 #include "timer.h"
-#include "cmd_freertos.h"
-
-#include "at86rf233.h"  // Current transceiver IC
-#include "at86rf231_driver.h"
+#include "radio_freertos.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -73,8 +71,8 @@
 #define RADIO_AUTOCALIBRATE             (0)
 #define RADIO_CALIB_PERIOD              (300000000) // 5 minutes
 
-//#define RADIO_STATE_ACQ_TIME_MS         25
-#define RADIO_STATE_ACQ_TIME_MS         portMAX_DELAY
+#define RADIO_STATE_ACQ_TIME_MS         3
+//#define RADIO_STATE_ACQ_TIME_MS         portMAX_DELAY
 //#define RADIO_QUEUE_ACQ_TIME_MS         25
 #define RADIO_QUEUE_ACQ_TIME_MS         portMAX_DELAY
 
@@ -460,7 +458,7 @@ unsigned char radioSendData (unsigned int dest_addr, unsigned char status,
     }
 
     //The MacPacket was allocated on the heap, but now exists in the queue.
-    //The one on the heap must be deleted. The payload data will reamin in the heap.
+    //The one on the heap must be deleted. The payload data will remain in the heap.
     vPortFree(pkt);
 
     return EXIT_SUCCESS;
@@ -568,7 +566,7 @@ static unsigned int radioSetStateTx(void) {
 
     unsigned int lockAcquired; //TODO: This should not be called a lock, it should just be a record of the state
 
-//    portBASE_TYPE xStatus;
+    portBASE_TYPE xStatus;
 
     // If already in Tx mode
     if(status.state == STATE_TX_IDLE) { return 1; }
@@ -577,12 +575,12 @@ static unsigned int radioSetStateTx(void) {
     lockAcquired = radioBeginTransition();
     if(!lockAcquired) { return 0; }
 
-//    xStatus = xSemaphoreTake(xRadioMutex, RADIO_STATE_ACQ_TIME_MS / portTICK_RATE_MS);
+    xStatus = xSemaphoreTake(xRadioMutex, RADIO_STATE_ACQ_TIME_MS / portTICK_RATE_MS);
 
-//    if(xStatus == pdFALSE)
-//    {
-//        return 0;
-//    }
+    if(xStatus == pdFALSE)
+    {
+        return 0;
+    }
 
     trxSetStateTx();
     status.state = STATE_TX_IDLE;
@@ -597,21 +595,21 @@ static unsigned int radioSetStateRx(void) {
 
     unsigned int lockAcquired;
 
-//    portBASE_TYPE xStatus;
+    portBASE_TYPE xStatus;
 
     // If already in Rx mode
     if(status.state == STATE_RX_IDLE) { return 1; }
 
-    // Attempt to begin transitionin
+    // Attempt to begin transition
     lockAcquired = radioBeginTransition();
     if(!lockAcquired) { return 0; }
 
-//    xStatus = xSemaphoreTake(xRadioMutex, RADIO_STATE_ACQ_TIME_MS / portTICK_RATE_MS);
+    xStatus = xSemaphoreGive(xRadioMutex);
 
-//    if(xStatus == pdFALSE)
-//    {
-//        return 0;
-//    }
+    //if(xStatus == pdFALSE)
+    //{
+    //    return 0; //Why would we not be able to give back the mutex?
+    //}
 
     trxSetStateRx();
     status.state = STATE_RX_IDLE;
@@ -857,19 +855,15 @@ static portTASK_FUNCTION(vRadioTask, pvParameters) {
         ///// Handle TX queue
         while (!radioTxQueueEmpty()) {
 
-            // If radio is receiving, we have to wait
-            if (!radioSetStateTx()) {
+            // If radio is receiving right now, we have to wait
+            if (!radioSetStateTx()) { //Takes radio mutex
                 taskYIELD();
             }
             radioProcessTx(); // Process outgoing buffer
-            return;
-
         }
 
-        // Default to Rx state
-        if (!radioSetStateRx()) {
-            return;
-        }
+        radioSetStateRx();
+        
         taskYIELD();
 
     }

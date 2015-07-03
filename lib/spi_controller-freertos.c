@@ -167,12 +167,14 @@ void spic2SetCallback(unsigned char cs, SpicIrqHandler handler) {
 int spic1BeginTransaction(unsigned char cs) {
     // TODO: Timeout?
 
+    portBASE_TYPE xStatus;
+    
     // TODO: generalize?
     if (cs > 0)
       // Only one CS line is supported
       return -1;
 
-    xSemaphoreTake(xSPI_CHAN1_Mutex, portMAX_DELAY);
+    xStatus = xSemaphoreTake(xSPI_CHAN1_Mutex, portMAX_DELAY);
 
     //CRITICAL_SECTION_START;
     // Reconfigure port
@@ -188,12 +190,14 @@ int spic1BeginTransaction(unsigned char cs) {
 int spic2BeginTransaction(unsigned char cs) {
     // TODO: Timeout?
 
+    portBASE_TYPE xStatus;
+    
     // TODO: generalize?
     if (cs > 1)
       // Two CS lines are supported
       return -1;
 
-    xSemaphoreTake(xSPI_CHAN2_Mutex, portMAX_DELAY);
+    xStatus = xSemaphoreTake(xSPI_CHAN2_Mutex, portMAX_DELAY);
 
     // Reconfigure port       ////// MPU INTERRUPTING HERE, over dfmemRead
     //CRITICAL_SECTION_START;
@@ -237,7 +241,8 @@ void spic2EndTransaction(void) {
     if (port_cs_line[1] == 1)
       SPI2_CS2 = SPI_CS_IDLE;  // Idle chip select
 
-    xSemaphoreGiveFromISR(xSPI_CHAN2_Mutex);   
+    portBASE_TYPE xStatus;
+    xStatus = xSemaphoreGive(xSPI_CHAN2_Mutex);   
 }
 
 void spic2EndTransactionFromISR(void) {

@@ -104,8 +104,8 @@ int main(void) {
 //    imuSetup(mainIMU_TASK_PRIORITY);
 
     //Telemetry recording task, runs at 1Khz
-    dfmemSetup();
-    telemSetup(mainTELEM_TASK_PRIORITY);
+    //dfmemSetup();
+    //telemSetup(mainTELEM_TASK_PRIORITY);
 
     //Startup indicator cycle with LEDs
     prvStartupLights();
@@ -144,7 +144,6 @@ void vApplicationIdleHook(void) {
 void vApplicationStackOverflowHook( TaskHandle_t xTask,
                                     signed char *pcTaskName ){
     while(1){
-        Nop();
         Nop();
     }
 }

@@ -122,7 +122,7 @@
         <targetDevice>dsPIC33FJ128MC706A</targetDevice>
         <targetHeader></targetHeader>
         <targetPluginBoard></targetPluginBoard>
-        <platformTool>Simulator</platformTool>
+        <platformTool>RealICEPlatformTool</platformTool>
         <languageToolchain>XC16</languageToolchain>
         <languageToolchainVersion>1.23</languageToolchainVersion>
         <platform>3</platform>
@@ -455,7 +455,7 @@
         <property key="tracecontrol.tracebufmax" value="546000"/>
         <property key="tracecontrol.tracefile"
                   value="C:\Users\pullin\Desktop\GIT code\octoroach_freertos\defmplabxtrace.log"/>
-        <property key="tracecontrol.tracefilemax" value="1048510"/>
+        <property key="tracecontrol.tracefilemax" value="10000000"/>
         <property key="voltagevalue" value="3.25"/>
       </RealICEPlatformTool>
       <Simulator>
