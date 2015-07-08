@@ -226,7 +226,7 @@ static portTASK_FUNCTION(vRadioTestTask, pvParameters){
     }
 }
 
-//// Alive indicator
+//// Alive indicator, "heartbeat" double flash
 void aliveTestSetup( unsigned portBASE_TYPE uxPriority);
 static portTASK_FUNCTION_PROTO(vAliveTestTask, pvParameters); //FreeRTOS task
 
@@ -251,11 +251,11 @@ static portTASK_FUNCTION(vAliveTestTask, pvParameters){
         
         //LED heartbeat
         LED_RED = 1;
-        vTaskDelayUntil(&xLastWakeTime, (150 / portTICK_RATE_MS));
+        vTaskDelayUntil(&xLastWakeTime, (100 / portTICK_RATE_MS));
         LED_RED = 0;
-        vTaskDelayUntil(&xLastWakeTime, (150 / portTICK_RATE_MS));
+        vTaskDelayUntil(&xLastWakeTime, (70 / portTICK_RATE_MS));
         LED_RED = 1;
-        vTaskDelayUntil(&xLastWakeTime, (150 / portTICK_RATE_MS));
+        vTaskDelayUntil(&xLastWakeTime, (100 / portTICK_RATE_MS));
         LED_RED = 0;
         vTaskDelayUntil(&xLastWakeTime, (800 / portTICK_RATE_MS)); //1 Hz
         taskYIELD();

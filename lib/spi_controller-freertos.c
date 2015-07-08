@@ -428,7 +428,7 @@ void __attribute__((interrupt, no_auto_psv)) _DMA2Interrupt(void) {
     // Call registered callback function
     int_handler_ch1[port_cs_line[0]](SPIC_TRANS_SUCCESS);
     
-    spic1EndTransactionFromISR();
+    //spic1EndTransactionFromISR();
 
 //    xSemaphoreGiveFromISR(xSPI_CHAN1_Mutex, &xHigherPriorityTaskWoken );
 //    if (xHigherPriorityTaskWoken != pdFALSE) {
@@ -463,7 +463,7 @@ void __attribute__((interrupt, no_auto_psv)) _DMA4Interrupt(void) {
     // Call registered callback function
     int_handler_ch2[port_cs_line[1]](SPIC_TRANS_SUCCESS);
 
-    spic2EndTransactionFromISR();
+    //spic2EndTransactionFromISR();
 
 //    xSemaphoreGiveFromISR(xSPI_CHAN2_Mutex, &xHigherPriorityTaskWoken );
 //    if (xHigherPriorityTaskWoken != pdFALSE) {

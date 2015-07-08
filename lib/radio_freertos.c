@@ -97,7 +97,8 @@ static portTASK_FUNCTION_PROTO(vRadioTask, pvParameters);
 portBASE_TYPE vStartRadioTask( unsigned portBASE_TYPE uxPriority);
 
 // IRQ handlers
-void trxCallback(unsigned int irq_cause);
+//void trxCallback(unsigned int irq_cause);
+void radioIRQStateTransition(unsigned int irq_cause);
 static inline void watchdogProgress(void);
 
 static void radioReset(void);
@@ -122,8 +123,8 @@ void radioSetup(unsigned int rx_queue_length, unsigned int tx_queue_length, port
 
 //    ppoolInit();
     trxSetup(TRX_CS); // Configure transceiver IC and driver
-    trxSetIrqCallback(&trxCallback);
-
+    //trxSetIrqCallback(&trxCallback);
+    trxSetIrqCallback(&radioIRQStateTransition);
     //Queues set up at start of task
     //TODO: Put here?
     //tx_queue = carrayCreate(tx_queue_length);
@@ -493,9 +494,8 @@ static void radioReset(void) {
  * only be called in interrupt context
  * @param irq_cause Interrupt source code
  */
-void trxCallback(unsigned int irq_cause) {
-
-    static BaseType_t xHigherPriorityTaskWoken;
+//void trxCallback(unsigned int irq_cause) {
+void radioIRQStateTransition(unsigned int irq_cause) {
 
     if (status.state == STATE_SLEEP) {
         // Shouldn't be here since sleep isn't implemented yet!
@@ -505,8 +505,6 @@ void trxCallback(unsigned int irq_cause) {
 
         // Beginning reception process
         if (irq_cause == RADIO_RX_START) {
-//            xSemaphoreTake(xRadioMutex, portMAX_DELAY);
-            xSemaphoreTakeFromISR(xRadioMutex, &xHigherPriorityTaskWoken);
             status.state = STATE_RX_BUSY;
         }
 
@@ -514,7 +512,7 @@ void trxCallback(unsigned int irq_cause) {
 
         // Reception complete
         if (irq_cause == RADIO_RX_SUCCESS) {
-            radioProcessRx(); // Process newly received data
+            radioProcessRx(); // Process newly received data from trx buffer into packet queue
             status.last_rssi = trxReadRSSI();
             status.last_ed = trxReadED();
             status.state = STATE_RX_IDLE; // Transition after data processed
@@ -528,28 +526,24 @@ void trxCallback(unsigned int irq_cause) {
         // Transmit successful
         if (irq_cause == RADIO_TX_SUCCESS) {
             //radioReturnPacket(carrayPopHead(tx_queue)); //Obsolete. Packet removed from queue at dequeue time
-//            xSemaphoreGive(xRadioMutex);
-            xSemaphoreGiveFromISR(xRadioMutex, &xHigherPriorityTaskWoken);
-            radioSetStateRx();
+            //radioSetStateRx();
         } else if (irq_cause == RADIO_TX_FAILURE) {
             // If no more retries, reset retry counter
             status.retry_number++;
             if (status.retry_number > configuration.soft_retries) {
                 status.retry_number = 0;
                 //radioReturnPacket((MacPacket)carrayPopHead(tx_queue)); //Obsolete. Packet removed from queue at dequeue time
-//                xSemaphoreGive(xRadioMutex);
-                xSemaphoreGiveFromISR(xRadioMutex, &xHigherPriorityTaskWoken);
-                radioSetStateRx();
+                //radioSetStateRx();
             }
         }
 
     }
 
-    if (xHigherPriorityTaskWoken != pdFALSE) {
+    //if (xHigherPriorityTaskWoken != pdFALSE) {
         // We can force a context switch here.  Context switching from an
         // ISR uses port specific syntax.
-        taskYIELD();
-    }
+    //    taskYIELD();
+    //}
 
     // Hardware error
     if (irq_cause == RADIO_HW_FAILURE) {
@@ -604,17 +598,15 @@ static unsigned int radioSetStateRx(void) {
     lockAcquired = radioBeginTransition();
     if(!lockAcquired) { return 0; }
 
-    xStatus = xSemaphoreGive(xRadioMutex);
-
-    //if(xStatus == pdFALSE)
-    //{
-    //    return 0; //Why would we not be able to give back the mutex?
-    //}
-
     trxSetStateRx();
     status.state = STATE_RX_IDLE;
     return 1;
 
+    xStatus = xSemaphoreGive(xRadioMutex);
+    //if(xStatus == pdFALSE)
+    //{
+    //    return 0; //Why would we not be able to give back the mutex?
+    //}
 }
 
 /**
@@ -736,17 +728,26 @@ static void radioProcessTx(void) {
 }
 
 /**
- * Process a pending packet receive request
+ * Function to pull just-received packet data back from the radio, put it in the
+ * expected MacPacket & payload (on the heap) format, and enqueue it to the
+ * radioRXQueue.
+ * 
+ * This is ONLY called from inside the INT4 handler.
  */
 static void radioProcessRx(void) {
 
     MacPacket packet;
     unsigned char len;
 
-    if(radioRxQueueFull()) { return; } // Don't bother if rx queue full
+     // Don't bother if rx queue full, data will just languish in radio RX buff
+    if(radioRxQueueFull()) {
+        //radio_rx_buffer_overflow++; //TODO: track these stats
+        return;
+    }
 
     len = trxReadBufferDataLength(); // Read received frame data length
-    packet = radioRequestPacket(len - PAYLOAD_HEADER_LENGTH); // Pull appropriate packet from pool
+    //This creates a MacPacketStruct on the head, that points to a payload that is also on the heap.
+    packet = radioRequestPacket(len - PAYLOAD_HEADER_LENGTH);
 
     if(packet == NULL) { return; }
 
@@ -755,18 +756,11 @@ static void radioProcessRx(void) {
 
     portBASE_TYPE xStatus;
 
+    //This copies the MacPacketStruct pointed to by 'packet' into the reserved memory for the queue.
+    //Now, the data in the queue points to the heap-allocated payload.
     xStatus = xQueueSendToBack(radioRXQueue, packet,  portMAX_DELAY);
 
     vPortFree(packet); //MacPacketStruct now copied into queue, pointing to payload on heap
-
-    static BaseType_t xHigherPriorityTaskWoken;
-    xSemaphoreGiveFromISR(xRadioMutex, &xHigherPriorityTaskWoken);
-    
-    if (xHigherPriorityTaskWoken != pdFALSE) {
-        // We can force a context switch here.  Context switching from an
-        // ISR uses port specific syntax.
-        taskYIELD();
-    }
 
 }
 
