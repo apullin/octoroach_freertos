@@ -203,11 +203,11 @@ static portTASK_FUNCTION(vRadioTestTask, pvParameters){
 
     unsigned long pktNum = 1;
     
-    static int sendPeriod = 500; //made a var so we can change this on the fly
+    static int sendPeriod = 50; //made a var so we can change this on the fly
 
     for (;;) {
-        heapspace = xPortGetFreeHeapSize();
-
+        //heapspace = xPortGetFreeHeapSize();
+        heapspace = 666;
         sprintf(echoMsg, "FreeRTOS test packet #%lu, heap space: %d", pktNum, heapspace);
         pktNum++;
         
@@ -228,7 +228,7 @@ void aliveTestSetup( unsigned portBASE_TYPE uxPriority){
     portBASE_TYPE xStatus;
 
     xStatus = xTaskCreate(vAliveTestTask, /* Pointer to the function that implements the task. */
-            (const char *) "Radio Test Task", /* Text name for the task. This is to facilitate debugging. */
+            (const char *) "Heartbeat task", /* Text name for the task. This is to facilitate debugging. */
             240, /* Stack depth in words. */
             NULL, /* We are not using the task parameter. */
             uxPriority, /* This task will run at priority 1. */

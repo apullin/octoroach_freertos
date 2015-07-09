@@ -498,6 +498,7 @@ static void radioReset(void) {
  * @param irq_cause Interrupt source code
  */
 //void trxCallback(unsigned int irq_cause) {
+
 void radioIRQStateTransition(unsigned int irq_cause) {
 
     if (status.state == STATE_SLEEP) {
@@ -532,10 +533,15 @@ void radioIRQStateTransition(unsigned int irq_cause) {
             //We do not set the radio back to RX here because this func is called in an interrupt context.
             //We we will leave the TX task to decide when it is done.
             /////radioSetStateRx();
-            
+
             static BaseType_t xHigherPriorityTaskWoken;
             xSemaphoreGiveFromISR(xRadioMutex, &xHigherPriorityTaskWoken);
-            
+            if (xHigherPriorityTaskWoken != pdFALSE) {
+                // We can force a context switch here.  Context switching from an
+                // ISRif (xHigherPriorityTaskWoken != pdFALSE) uses port specific syntax.
+                taskYIELD();
+            }
+
         } else if (irq_cause == RADIO_TX_FAILURE) {
             // If no more retries, reset retry counter
             status.retry_number++;
@@ -835,7 +841,6 @@ static portTASK_FUNCTION(vRadioRXTask, pvParameters) {
         //so this will shift all packets into the cmdQueue, RXqueue will be maximally empty.
         xStatus = xQueueSendToBack(cmdQueue, &pkt, portMAX_DELAY); //dispatch to cmd queu
         
-       //taskYIELD();
     }
 }
 
@@ -869,7 +874,6 @@ static portTASK_FUNCTION(vRadioTXTask, pvParameters) {
         //if(xStatus == pdFALSE){
         //    radioSetStateRx();
         //}
-        
-        //taskYIELD();
+       
     }
 }

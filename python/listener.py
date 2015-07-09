@@ -43,7 +43,7 @@ def main():
                 pktNum = pktNum + 1
                 R1.sendEcho(echoString)
                 #time.sleep(random.random()*3.0)
-                time.sleep(0.6)
+                time.sleep(0.25)
             except KeyboardInterrupt:
                     print "Stopping echo, going to listener mode"
                     break
