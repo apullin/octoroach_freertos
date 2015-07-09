@@ -95,7 +95,8 @@ typedef struct {
 } RadioStatus;                      // Total: (18)
 
 // Setup and initialization
-void radioSetup(unsigned int rx_queue_length, unsigned int tx_queue_length, portBASE_TYPE uxPriority);
+void radioSetup(unsigned int rx_queue_length, unsigned int tx_queue_length, 
+        portBASE_TYPE uxPriority_RX, portBASE_TYPE uxPriority_TX);
 
 // Configuration methods
 void radioConfigure(RadioConfiguration *conf);

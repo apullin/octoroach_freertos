@@ -74,7 +74,8 @@
 #define mainTELEM_TASK_PRIORITY                         ( tskIDLE_PRIORITY + 8 )
 #define mainRADIOTEST_TASK_PRIORITY                     ( tskIDLE_PRIORITY + 7 )
 #define mainALIVETEST_TASK_PRIORITY                     ( tskIDLE_PRIORITY + 6 )
-#define mainRADIO_TASK_PRIORITY                         ( tskIDLE_PRIORITY + 5 )
+#define mainRADIORX_TASK_PRIORITY                       ( tskIDLE_PRIORITY + 5 )
+#define mainRADIOTX_TASK_PRIORITY                       ( tskIDLE_PRIORITY + 4 )
 #define mainCMDHANDLER_TASK_PRIORITY                    ( tskIDLE_PRIORITY + 1 )
 //Private function prototypes
 static void prvSetupHardware(void);
@@ -95,7 +96,7 @@ int main(void) {
     prvSetupHardware();  //Basic board init
 
     //Radio
-    radioSetup(RADIO_RX_QUEUE_MAX_SIZE, RADIO_TX_QUEUE_MAX_SIZE, mainRADIO_TASK_PRIORITY);
+    radioSetup(RADIO_RX_QUEUE_MAX_SIZE, RADIO_TX_QUEUE_MAX_SIZE, mainRADIORX_TASK_PRIORITY, mainRADIOTX_TASK_PRIORITY);
     radioSetChannel(RADIO_CHANNEL);
     radioSetSrcPanID(RADIO_PAN_ID);
     radioSetSrcAddr(RADIO_SRC_ADDR);
@@ -118,7 +119,7 @@ int main(void) {
 
 
     //Test that sends WHOAMI's and ECHO's at 2Hz
-    //radioTestSetup(mainRADIOTEST_TASK_PRIORITY);
+    radioTestSetup(mainRADIOTEST_TASK_PRIORITY);
 
     /* Start the created tasks running. */
     vTaskStartScheduler();
@@ -205,20 +206,11 @@ static portTASK_FUNCTION(vRadioTestTask, pvParameters){
     static int sendPeriod = 500; //made a var so we can change this on the fly
 
     for (;;) {
-        //TODO: Is yielding neccesary here?
-        // Delay task in a periodic manner
-
-        //Send WHOAMI packet
-//        radioSendData(RADIO_DST_ADDR, 0, CMD_WHO_AM_I, verlen, (unsigned char*)verstr, 0);
-//        LED_YELLOW = ~LED_YELLOW;
-        //Delay 500ms
-//        vTaskDelayUntil(&xLastWakeTime, (500 / portTICK_RATE_MS));
-        //Send ECHO packet
         heapspace = xPortGetFreeHeapSize();
-        //heapspace = 666;
+
         sprintf(echoMsg, "FreeRTOS test packet #%lu, heap space: %d", pktNum, heapspace);
-//        sprintf(echoMsg, "test");
         pktNum++;
+        
         radioSendData(RADIO_DST_ADDR, 0, CMD_ECHO, strlen(echoMsg), (unsigned char*)echoMsg, 0);
         LED_YELLOW = ~LED_YELLOW;
         //Delay 500ms

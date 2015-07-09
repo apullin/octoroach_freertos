@@ -490,12 +490,9 @@ static portTASK_FUNCTION(vCmdHandlerTask, pvParameters) { //FreeRTOS task
     static MacPacket packet = &packetStruct;
     static Payload pld;
 
-    static QueueHandle_t radioRXQueue;
-    radioRXQueue = radioGetRXQueueHandle();
-
     for (;;) { //Task loop
         //Blocking wait on incoming command
-        xStatus = xQueueReceive(radioRXQueue, packet, portMAX_DELAY);
+        xStatus = xQueueReceive(cmdQueue, packet, portMAX_DELAY);
         //Note: packet has payload and payload->pld_data on heap
 
         //Structure command

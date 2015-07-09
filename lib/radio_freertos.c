@@ -73,8 +73,8 @@
 
 #define RADIO_STATE_ACQ_TIME_MS         3
 //#define RADIO_STATE_ACQ_TIME_MS         portMAX_DELAY
-//#define RADIO_QUEUE_ACQ_TIME_MS         25
-#define RADIO_QUEUE_ACQ_TIME_MS         portMAX_DELAY
+#define RADIO_QUEUE_ACQ_TIME_MS         10
+//#define RADIO_QUEUE_ACQ_TIME_MS         portMAX_DELAY
 
 
 #define radiotaskSTACK_SIZE             configMINIMAL_STACK_SIZE
@@ -92,9 +92,11 @@ static QueueHandle_t radioTXQueue;
 static SemaphoreHandle_t xRadioMutex;
 
 // =========== Function stubs =================================================
-static portTASK_FUNCTION_PROTO(vRadioTask, pvParameters);
+//static portTASK_FUNCTION_PROTO(vRadioTask, pvParameters);
+static portTASK_FUNCTION_PROTO(vRadioRXTask, pvParameters);
+static portTASK_FUNCTION_PROTO(vRadioTXTask, pvParameters);
 
-portBASE_TYPE vStartRadioTask( unsigned portBASE_TYPE uxPriority);
+portBASE_TYPE vStartRadioTask( unsigned portBASE_TYPE uxPriority_RX, unsigned portBASE_TYPE uxPriority_TX);
 
 // IRQ handlers
 //void trxCallback(unsigned int irq_cause);
@@ -117,7 +119,8 @@ static unsigned int radioSetStateOff(void);
 // =========== Public functions ===============================================
 
 // Initialize radio software and hardware
-void radioSetup(unsigned int rx_queue_length, unsigned int tx_queue_length, portBASE_TYPE uxPriority) {
+void radioSetup(unsigned int rx_queue_length, unsigned int tx_queue_length, 
+        portBASE_TYPE uxPriority_RX, portBASE_TYPE uxPriority_TX) {
 
     RadioConfiguration conf;
 
@@ -161,7 +164,7 @@ void radioSetup(unsigned int rx_queue_length, unsigned int tx_queue_length, port
     radioSetStateRx();
 
     //Start FreeRTOS task
-    vStartRadioTask(uxPriority);
+    vStartRadioTask(uxPriority_RX, uxPriority_TX);
 
 }
 
@@ -526,7 +529,13 @@ void radioIRQStateTransition(unsigned int irq_cause) {
         // Transmit successful
         if (irq_cause == RADIO_TX_SUCCESS) {
             //radioReturnPacket(carrayPopHead(tx_queue)); //Obsolete. Packet removed from queue at dequeue time
-            //radioSetStateRx();
+            //We do not set the radio back to RX here because this func is called in an interrupt context.
+            //We we will leave the TX task to decide when it is done.
+            /////radioSetStateRx();
+            
+            static BaseType_t xHigherPriorityTaskWoken;
+            xSemaphoreGiveFromISR(xRadioMutex, &xHigherPriorityTaskWoken);
+            
         } else if (irq_cause == RADIO_TX_FAILURE) {
             // If no more retries, reset retry counter
             status.retry_number++;
@@ -538,12 +547,6 @@ void radioIRQStateTransition(unsigned int irq_cause) {
         }
 
     }
-
-    //if (xHigherPriorityTaskWoken != pdFALSE) {
-        // We can force a context switch here.  Context switching from an
-        // ISR uses port specific syntax.
-    //    taskYIELD();
-    //}
 
     // Hardware error
     if (irq_cause == RADIO_HW_FAILURE) {
@@ -597,8 +600,10 @@ static unsigned int radioSetStateRx(void) {
 
     // Attempt to begin transition
     lockAcquired = radioBeginTransition();
-    if(!lockAcquired) { return 0; }
-    xStatus = xSemaphoreGive(xRadioMutex);
+    //if(!lockAcquired) { return 0; }
+    
+    //Blocking take on semaphore; wait until radio is unclaimed to switch to RX mode...
+    xStatus = xSemaphoreTake(xRadioMutex,portMAX_DELAY);
     //if(xStatus == pdFALSE)
     //{
     //    return 0; //Why would we not be able to give back the mutex?
@@ -606,6 +611,9 @@ static unsigned int radioSetStateRx(void) {
     
     trxSetStateRx();
     status.state = STATE_RX_IDLE;
+    
+    xStatus = xSemaphoreGive(xRadioMutex); //... where RX mode is defined as the semaphore being free
+    
     return 1;
 
 }
@@ -782,85 +790,86 @@ QueueHandle_t radioGetRXQueueHandle(void) {
     return radioRXQueue;
 }
 
-portBASE_TYPE vStartRadioTask( unsigned portBASE_TYPE uxPriority){
-    portBASE_TYPE xStatus;
+portBASE_TYPE vStartRadioTask( unsigned portBASE_TYPE uxPriority_RX , 
+        unsigned portBASE_TYPE uxPriority_TX){
+    
+    portBASE_TYPE xStatusRX, xStatusTX;
 
-    xStatus = xTaskCreate(vRadioTask,       /* Pointer to the function that implements the task. */
-            (const char *) "Radio Task",    /* Text name for the task. This is to facilitate debugging. */
+    xStatusRX = xTaskCreate(vRadioRXTask,       /* Pointer to the function that implements the task. */
+            (const char *) "Radio RX Task",    /* Text name for the task. This is to facilitate debugging. */
             radiotaskSTACK_SIZE,            /* Stack depth in words. */
             NULL,                           /* We are not using the task parameter. */
-            uxPriority,                     /* This task will run at priority 1. */
+            uxPriority_RX,                     /* This task will run at priority 1. */
             NULL);
 
-    return xStatus;
+    xStatusTX = xTaskCreate(vRadioTXTask,       /* Pointer to the function that implements the task. */
+            (const char *) "Radio TX Task",    /* Text name for the task. This is to facilitate debugging. */
+            radiotaskSTACK_SIZE,            /* Stack depth in words. */
+            NULL,                           /* We are not using the task parameter. */
+            uxPriority_TX,                     /* This task will run at priority 1. */
+            NULL);
+    
+    return xStatusRX & xStatusTX;
 }
 
 
-//static portTASK_FUNCTION(vRadioTask, pvParameters) {
-//    portTickType xLastWakeTime;
-//    xLastWakeTime = xTaskGetTickCount();
-////    portBASE_TYPE xStatus;
-//
-//    for (;;) {
-//        
-//        radioProcess();
-//
-//        vTaskDelayUntil(&xLastWakeTime, (15 / portTICK_RATE_MS));
-//        
-//        taskYIELD();
-//    }
-//}
+//////////////////
+//Radio RX task just dispatches packets in the RX queue to the cmd queue
+static portTASK_FUNCTION(vRadioRXTask, pvParameters) {
 
-static portTASK_FUNCTION(vRadioTask, pvParameters) {
-
-    //Pseudo code
-    /* If RX queue is not empty (nonblocking)
-     * take packets, push to CMD queue (or other loc?)
-     * Only dequeue from RX if push successful.
-     * 
-     */
-
-    /*
-     If TX queue is not empty,
-     * transition to TX mode
-     * send all packets
-     * transition back to RX mode
-     */
-
-    MacPacketStruct pkt;
-
+    portBASE_TYPE xStatus;
+    
     static QueueHandle_t cmdQueue;
     cmdQueue = cmdGetQueueHandle();
 
+    static MacPacketStruct pkt; //Thread local storage
+    //TODO: Is this the right design? The thread can hold 1 packet in limbo that is in neither queue
+    
     for (;;) {
+        
+        xStatus = xQueueReceive(radioRXQueue, &pkt, portMAX_DELAY); //remove from RX queue
+      
+        //Pkts will be dispatched to cmdQueue only for now. For other ops, switch on pkt type here.
+        
+        //The radio RX task runs at a higher priority than the Cmd handler task,
+        //so this will shift all packets into the cmdQueue, RXqueue will be maximally empty.
+        xStatus = xQueueSendToBack(cmdQueue, &pkt, portMAX_DELAY); //dispatch to cmd queu
+        
+       //taskYIELD();
+    }
+}
 
-        ///// Handle RX queue
-        while (!radioRxQueueEmpty()) {
+//Radio TX task; just waits on data in the TX queue, and tries to take control of the radio to send it.
+static portTASK_FUNCTION(vRadioTXTask, pvParameters) {
 
-            xQueuePeek(radioRXQueue, &pkt, 0);
-            //Put some logic to decide where packet should go
-            if (uxQueueSpacesAvailable(cmdQueue) > 0) {
-                xQueueReceive(radioRXQueue, &pkt, 0); //remove from RX queue
-                xQueueSendToBack(cmdQueue, &pkt, 0); //dispatch to cmd queue
-            }
+    portBASE_TYPE xStatus;
 
-        } //RX queue should be empty now
-
-        taskYIELD();
-
-        ///// Handle TX queue
-        while (!radioTxQueueEmpty()) {
-
-            // If radio is receiving right now, we have to wait
-            if (!radioSetStateTx()) { //Takes radio mutex
-                taskYIELD();
-            }
-            radioProcessTx(); // Process outgoing buffer
-        }
-
+    static MacPacketStruct pkt; //Thread local storage
+    //TODO: Is this the right design? The thread can hold 1 packet in limbo that is in neither queue
+    
+    for (;;) {
+        //Blocks waiting for data to be in TX queue
+        //TODO: Inefficient, due to memory copy? Replace with a simpler mutex for signaling
+        
+        xStatus = xQueuePeek(radioTXQueue, &pkt, portMAX_DELAY);
+        radioSetStateTx(); //Can block for limited time, waiting to take radio mutex
+        //Note, xRadioMutex "taken" == radio being actively used in TX mode
+        
+        //radioProcessTx can block for limited time to get data from TX queue,
+        // BUT that shouldn't happen.
+        //TODO: TX now depends on a cascade of blocking calls; revise? 
+        radioProcessTx();
+        
+        //Go back to RX by default
+        //xSemaphoreGive(xRadioMutex);
         radioSetStateRx();
         
-        taskYIELD();
-
+        //// Alternative: continue RX until packet queue exhausted
+        //xStatus = xQueuePeek(radioTXQueue, &pkt, 0);
+        //if(xStatus == pdFALSE){
+        //    radioSetStateRx();
+        //}
+        
+        //taskYIELD();
     }
 }
