@@ -70,7 +70,7 @@
 #endif
 
 /* Task priorities. */
-#define mainIMU_TASK_PRIORITY                           ( tskIDLE_PRIORITY + 9)
+#define mainIMU_TASK_PRIORITY                           ( tskIDLE_PRIORITY + 9 )
 #define mainTELEM_TASK_PRIORITY                         ( tskIDLE_PRIORITY + 8 )
 #define mainRADIOTEST_TASK_PRIORITY                     ( tskIDLE_PRIORITY + 7 )
 #define mainALIVETEST_TASK_PRIORITY                     ( tskIDLE_PRIORITY + 6 )
@@ -114,11 +114,11 @@ int main(void) {
     aliveTestSetup(mainALIVETEST_TASK_PRIORITY);
     
     //Cmd Handler task
-    cmdSetup(mainCMDHANDLER_TASK_PRIORITY);
+    cmdSetup(CMD_QUEUE_MAX_SIZE, mainCMDHANDLER_TASK_PRIORITY);
 
 
     //Test that sends WHOAMI's and ECHO's at 2Hz
-    radioTestSetup(mainRADIOTEST_TASK_PRIORITY);
+    //radioTestSetup(mainRADIOTEST_TASK_PRIORITY);
 
     /* Start the created tasks running. */
     vTaskStartScheduler();
@@ -201,6 +201,8 @@ static portTASK_FUNCTION(vRadioTestTask, pvParameters){
     int heapspace = 0;
 
     unsigned long pktNum = 1;
+    
+    static int sendPeriod = 500; //made a var so we can change this on the fly
 
     for (;;) {
         //TODO: Is yielding neccesary here?
@@ -220,7 +222,7 @@ static portTASK_FUNCTION(vRadioTestTask, pvParameters){
         radioSendData(RADIO_DST_ADDR, 0, CMD_ECHO, strlen(echoMsg), (unsigned char*)echoMsg, 0);
         LED_YELLOW = ~LED_YELLOW;
         //Delay 500ms
-        vTaskDelayUntil(&xLastWakeTime, (500 / portTICK_RATE_MS));
+        vTaskDelayUntil(&xLastWakeTime, (sendPeriod / portTICK_RATE_MS));
 
         taskYIELD();
     }

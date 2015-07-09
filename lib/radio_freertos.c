@@ -565,16 +565,17 @@ static unsigned int radioSetStateTx(void) {
     // If already in Tx mode
     if(status.state == STATE_TX_IDLE) { return 1; }
 
-    // Attempt to begin transitionin
+    // Attempt to begin transition
     lockAcquired = radioBeginTransition();
-    if(!lockAcquired) { return 0; }
-
+    
     xStatus = xSemaphoreTake(xRadioMutex, RADIO_STATE_ACQ_TIME_MS / portTICK_RATE_MS);
 
     if(xStatus == pdFALSE)
     {
         return 0;
     }
+    
+    if(!lockAcquired) { return 0; }
 
     trxSetStateTx();
     status.state = STATE_TX_IDLE;
@@ -597,16 +598,16 @@ static unsigned int radioSetStateRx(void) {
     // Attempt to begin transition
     lockAcquired = radioBeginTransition();
     if(!lockAcquired) { return 0; }
-
-    trxSetStateRx();
-    status.state = STATE_RX_IDLE;
-    return 1;
-
     xStatus = xSemaphoreGive(xRadioMutex);
     //if(xStatus == pdFALSE)
     //{
     //    return 0; //Why would we not be able to give back the mutex?
     //}
+    
+    trxSetStateRx();
+    status.state = STATE_RX_IDLE;
+    return 1;
+
 }
 
 /**
@@ -828,7 +829,8 @@ static portTASK_FUNCTION(vRadioTask, pvParameters) {
 
     MacPacketStruct pkt;
 
-    QueueHandle_t cmdQueue = cmdGetQueueHandle();
+    static QueueHandle_t cmdQueue;
+    cmdQueue = cmdGetQueueHandle();
 
     for (;;) {
 

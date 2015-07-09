@@ -100,7 +100,7 @@ portBASE_TYPE vStartCmdHandlerTask( unsigned portBASE_TYPE uxPriority){
 }
 
 
-unsigned int cmdSetup(unsigned portBASE_TYPE uxPriority) {
+unsigned int cmdSetup(unsigned int cmd_queue_length, unsigned portBASE_TYPE uxPriority) {
 
     unsigned int i;
 
@@ -136,6 +136,8 @@ unsigned int cmdSetup(unsigned portBASE_TYPE uxPriority) {
     cmd_func[CMD_SET_TAIL_GAINS] = &cmdSetTailGains;
     cmd_func[CMD_SET_OL_VIBE]  = &cmdSetOLVibe;
 
+    cmdQueue = xQueueCreate(cmd_queue_length, (unsigned portBASE_TYPE) sizeof ( MacPacketStruct));
+    
     //Start FreeRTOS task
     vStartCmdHandlerTask(uxPriority);
 
@@ -484,11 +486,12 @@ static portTASK_FUNCTION(vCmdHandlerTask, pvParameters) { //FreeRTOS task
     cmdStruct_t command;
     portBASE_TYPE xStatus;
 
-    MacPacketStruct packetStruct;
-    MacPacket packet = &packetStruct;
-    Payload pld;
+    static MacPacketStruct packetStruct; //local stack storage
+    static MacPacket packet = &packetStruct;
+    static Payload pld;
 
-    QueueHandle_t radioRXQueue = radioGetRXQueueHandle();
+    static QueueHandle_t radioRXQueue;
+    radioRXQueue = radioGetRXQueueHandle();
 
     for (;;) { //Task loop
         //Blocking wait on incoming command

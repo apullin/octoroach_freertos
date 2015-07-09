@@ -48,7 +48,7 @@ typedef struct{
     unsigned char* frame;
 } cmdStruct_t;
 
-unsigned int cmdSetup(unsigned portBASE_TYPE uxPriority);
+unsigned int cmdSetup(unsigned int cmd_queue_length, unsigned portBASE_TYPE uxPriority);
 
 QueueHandle_t cmdGetQueueHandle(void);
 

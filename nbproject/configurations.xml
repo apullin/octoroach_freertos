@@ -411,7 +411,7 @@
         <property key="UART 2" value="true"/>
         <property key="debugoptions.useswbreakpoints" value="false"/>
         <property key="hwtoolclock.frcindebug" value="false"/>
-        <property key="hwtoolclock.instructionspeed" value="4"/>
+        <property key="hwtoolclock.instructionspeed" value="40"/>
         <property key="hwtoolclock.units" value="mips"/>
         <property key="memories.aux" value="false"/>
         <property key="memories.bootflash" value="true"/>
