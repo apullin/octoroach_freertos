@@ -70,12 +70,13 @@
 #endif
 
 /* Task priorities. */
-#define mainIMU_TASK_PRIORITY                           ( tskIDLE_PRIORITY + 9 )
-#define mainTELEM_TASK_PRIORITY                         ( tskIDLE_PRIORITY + 8 )
+#define mainIMU_TASK_PRIORITY                           ( tskIDLE_PRIORITY + 10 )
+#define mainTELEM_TASK_SAVE_PRIORITY                    ( tskIDLE_PRIORITY + 9 )
+#define mainTELEM_TASK_FLASH_PRIORITY                   ( tskIDLE_PRIORITY + 8 )
 #define mainRADIOTEST_TASK_PRIORITY                     ( tskIDLE_PRIORITY + 7 )
-#define mainALIVETEST_TASK_PRIORITY                     ( tskIDLE_PRIORITY + 6 )
 #define mainRADIORX_TASK_PRIORITY                       ( tskIDLE_PRIORITY + 5 )
 #define mainRADIOTX_TASK_PRIORITY                       ( tskIDLE_PRIORITY + 4 )
+#define mainALIVETEST_TASK_PRIORITY                     ( tskIDLE_PRIORITY + 3 )
 #define mainCMDHANDLER_TASK_PRIORITY                    ( tskIDLE_PRIORITY + 1 )
 //Private function prototypes
 static void prvSetupHardware(void);
@@ -102,24 +103,23 @@ int main(void) {
     radioSetSrcAddr(RADIO_SRC_ADDR);
 
     //IMU task, runs at 1Khz
-//    imuSetup(mainIMU_TASK_PRIORITY);
+    imuSetup(mainIMU_TASK_PRIORITY);
 
     //Telemetry recording task, runs at 1Khz
-    //dfmemSetup();
-    //telemSetup(mainTELEM_TASK_PRIORITY);
-
-    //Startup indicator cycle with LEDs
-    prvStartupLights();
+    dfmemSetup();
+    telemSetup(mainTELEM_TASK_SAVE_PRIORITY, mainTELEM_TASK_FLASH_PRIORITY);
 
     //Lights test to show cpu is alive
     aliveTestSetup(mainALIVETEST_TASK_PRIORITY);
     
     //Cmd Handler task
     cmdSetup(CMD_QUEUE_MAX_SIZE, mainCMDHANDLER_TASK_PRIORITY);
-
+    
+    //Startup indicator cycle with LEDs
+    prvStartupLights();
 
     //Test that sends WHOAMI's and ECHO's at 2Hz
-    radioTestSetup(mainRADIOTEST_TASK_PRIORITY);
+    //radioTestSetup(mainRADIOTEST_TASK_PRIORITY);
 
     /* Start the created tasks running. */
     vTaskStartScheduler();

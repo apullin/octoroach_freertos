@@ -31,6 +31,7 @@
         <itemPath>../imageproc-lib/payload.h</itemPath>
         <itemPath>../imageproc-lib/bsp-ip25.h</itemPath>
         <itemPath>../imageproc-lib/at86rf233.h</itemPath>
+        <itemPath>../imageproc-lib/mpu6000.h</itemPath>
       </logicalFolder>
       <logicalFolder name="f1" displayName="lib" projectFiles="true">
         <itemPath>lib/spi_controller-freertos.h</itemPath>
@@ -58,7 +59,7 @@
         <logicalFolder name="Source" displayName="Source" projectFiles="true">
           <logicalFolder name="portable" displayName="portable" projectFiles="true">
             <logicalFolder name="MemMang" displayName="MemMang" projectFiles="true">
-              <itemPath>FreeRTOS/Source/portable/MemMang/heap_3.c</itemPath>
+              <itemPath>FreeRTOS/Source/portable/MemMang/heap_4.c</itemPath>
             </logicalFolder>
             <logicalFolder name="MPLAB" displayName="MPLAB" projectFiles="true">
               <logicalFolder name="PIC24_dsPIC" displayName="PIC24_dsPIC" projectFiles="true">
@@ -77,8 +78,6 @@
         <itemPath>../imageproc-lib/init_default.c</itemPath>
         <itemPath>../imageproc-lib/pid.c</itemPath>
         <itemPath>../imageproc-lib/adc_pid.c</itemPath>
-        <itemPath>../imageproc-lib/mpu6000.c</itemPath>
-        <itemPath>../imageproc-lib/mpu6000.h</itemPath>
         <itemPath>../imageproc-lib/delay.s</itemPath>
         <itemPath>../imageproc-lib/sclock.c</itemPath>
         <itemPath>../imageproc-lib/tih.c</itemPath>
@@ -88,6 +87,7 @@
         <itemPath>../imageproc-lib/mac_packet.c</itemPath>
         <itemPath>../imageproc-lib/version.c</itemPath>
         <itemPath>../imageproc-lib/at86rf233_driver.c</itemPath>
+        <itemPath>../imageproc-lib/mpu6000.c</itemPath>
       </logicalFolder>
       <logicalFolder name="f4" displayName="lib" projectFiles="true">
         <itemPath>lib/imu_freertos.c</itemPath>
@@ -124,7 +124,7 @@
         <targetPluginBoard></targetPluginBoard>
         <platformTool>RealICEPlatformTool</platformTool>
         <languageToolchain>XC16</languageToolchain>
-        <languageToolchainVersion>1.23</languageToolchainVersion>
+        <languageToolchainVersion>1.24</languageToolchainVersion>
         <platform>3</platform>
       </toolsSet>
       <compileType>
@@ -234,7 +234,7 @@
         <property key="general-code-protect" value="no_code_protect"/>
         <property key="general-write-protect" value="no_write_protect"/>
         <property key="generate-cross-reference-file" value="false"/>
-        <property key="heap-size" value="8192"/>
+        <property key="heap-size" value="1024"/>
         <property key="input-libraries" value=""/>
         <property key="linker-stack" value="true"/>
         <property key="linker-symbols" value=""/>
@@ -252,7 +252,7 @@
         <property key="secure-flash" value="no_flash"/>
         <property key="secure-ram" value="no_ram"/>
         <property key="secure-write-protect" value="no_write_protect"/>
-        <property key="stack-size" value="240"/>
+        <property key="stack-size" value="512"/>
         <property key="symbol-stripping" value=""/>
         <property key="trace-symbols" value=""/>
         <property key="warn-section-align" value="false"/>
@@ -454,8 +454,7 @@
         <property key="tracecontrol.timerpriority" value="3"/>
         <property key="tracecontrol.timerselect" value="0"/>
         <property key="tracecontrol.tracebufmax" value="546000"/>
-        <property key="tracecontrol.tracefile"
-                  value="C:\Users\pullin\Desktop\GIT code\octoroach_freertos\defmplabxtrace.log"/>
+        <property key="tracecontrol.tracefile" value="defmplabxtrace.log"/>
         <property key="tracecontrol.tracefilemax" value="10000000"/>
         <property key="voltagevalue" value="3.25"/>
       </RealICEPlatformTool>

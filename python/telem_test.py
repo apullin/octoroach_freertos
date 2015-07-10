@@ -6,9 +6,14 @@ Contents of this file are copyright Andrew Pullin, 2013
 
 """
 from lib import command
-import time,sys,traceback
+import time,sys,os,traceback
+import random
 import serial
-import shared
+
+# Path to imageproc-settings repo must be added
+sys.path.append(os.path.dirname("../../imageproc-settings/"))
+sys.path.append(os.path.dirname("../imageproc-settings/"))  
+import shared_multi as shared
 
 from or_helpers import *
 

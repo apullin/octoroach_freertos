@@ -58,10 +58,10 @@ static DfmemGeometryStruct mem_geo;
 //////////////////////////////////////////////////
 ////////// Private function prototypes ///////////
 //////////////////////////////////////////////////
-static portTASK_FUNCTION_PROTO(vTelemTask, pvParameters);       //FreeRTOS task, record telemetry into queue
-static portTASK_FUNCTION_PROTO(vTelemWriteTask, pvParameters); //FreeRTOS task, writes queue into dfmem queue at low priority
+static portTASK_FUNCTION_PROTO(vTelemSaveTask, pvParameters);       //FreeRTOS task, record telemetry into queue
+static portTASK_FUNCTION_PROTO(vTelemFlashTask, pvParameters); //FreeRTOS task, writes queue into dfmem queue at low priority
 
-portBASE_TYPE vStartTelemTasks( unsigned portBASE_TYPE uxPriority);
+portBASE_TYPE vStartTelemTasks( unsigned portBASE_TYPE uxPriority_save, unsigned portBASE_TYPE uxPriority_flash);
 
 static QueueHandle_t telemQueue;
 
@@ -69,30 +69,30 @@ static QueueHandle_t telemQueue;
 ////////// Public function definitions ///////////
 //////////////////////////////////////////////////
 
-portBASE_TYPE vStartTelemTasks( unsigned portBASE_TYPE uxPriority){
+portBASE_TYPE vStartTelemTasks( unsigned portBASE_TYPE uxPriority_save, unsigned portBASE_TYPE uxPriority_flash){
     portBASE_TYPE xStatus;
 
     telemQueue = xQueueCreate(TELEM_QUEUE_SIZE, (unsigned portBASE_TYPE) sizeof (telemStruct_t));
 
-    xStatus = xTaskCreate(vTelemTask, /* Pointer to the function that implements the task. */
+    xStatus = xTaskCreate(vTelemSaveTask, /* Pointer to the function that implements the task. */
             (const char *) "Telemetry Recording Task", /* Text name for the task. This is to facilitate debugging. */
             240, /* Stack depth in words. */
             NULL, /* We are not using the task parameter. */
-            uxPriority, /* This task will run at priority 1. */
+            uxPriority_save, /* This task will run at priority 1. */
             &xTelemTaskHandle); /* We are not going to use the task handle. */
 
-    xStatus = xTaskCreate(vTelemWriteTask, /* Pointer to the function that implements the task. */
+    xStatus = xTaskCreate(vTelemFlashTask, /* Pointer to the function that implements the task. */
             (const char *) "Telemetry Write Task", /* Text name for the task. This is to facilitate debugging. */
             240, /* Stack depth in words. */
             NULL, /* We are not using the task parameter. */
-            uxPriority - 1, /* This task will run at priority 1. */
+            uxPriority_flash, /* This task will run at priority 1. */
             &xTelemWriteTaskHandle); /* We are not going to use the task handle. */
 
     return xStatus;
 }
 
 
-void telemSetup(unsigned portBASE_TYPE uxPriority) {
+void telemSetup(unsigned portBASE_TYPE uxPriority_save, unsigned portBASE_TYPE uxPriority_flash) {
 
     dfmemGetGeometryParams(&mem_geo); // Read memory chip sizing
 
@@ -101,7 +101,7 @@ void telemSetup(unsigned portBASE_TYPE uxPriority) {
     telemPacketSize = sizeof (telemStruct_t);
     
     //Start FreeRTOS task
-    vStartTelemTasks(uxPriority);
+    vStartTelemTasks(uxPriority_save, uxPriority_flash);
 }
 
 void telemSetSamplesToSave(unsigned long n) {
@@ -239,7 +239,7 @@ void telemSetStartTime(void) {
 //This decouples the telemetry recording from the writing to dfmem.
 //void vTelemWriteTask(void *pvParameters) { //FreeRTOS task
 
-static portTASK_FUNCTION(vTelemWriteTask, pvParameters) { //FreeRTOS task
+static portTASK_FUNCTION(vTelemFlashTask, pvParameters) { //FreeRTOS task
 
     telemStruct_t data;
     portBASE_TYPE xStatus;
@@ -259,7 +259,7 @@ static portTASK_FUNCTION(vTelemWriteTask, pvParameters) { //FreeRTOS task
 
 //void vTelemTask(void *pvParameters) { //FreeRTOS task
 
-static portTASK_FUNCTION(vTelemTask, pvParameters) { //FreeRTOS task
+static portTASK_FUNCTION(vTelemSaveTask, pvParameters) { //FreeRTOS task
 
     telemStruct_t sample;
     //portBASE_TYPE xStatus;

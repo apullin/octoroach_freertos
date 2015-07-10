@@ -169,6 +169,14 @@ void vIMUTask( void *pvParameters ) {               //FreeRTOS task
 
     dfilterAvgCreate(&gyroZavg, GYRO_AVG_SAMPLES);
 
+    // Heighten priority of this task until MPU calibration complete
+    unsigned portBASE_TYPE uxPriority_orig = uxTaskPriorityGet(NULL);
+    vTaskPrioritySet(NULL, 11);
+    
+    mpuRunCalib(200, 200);
+    
+    vTaskPrioritySet(NULL, uxPriority_orig);
+    
     for (;;) { //Task loop
 
         #if defined (__IMAGEPROC24)

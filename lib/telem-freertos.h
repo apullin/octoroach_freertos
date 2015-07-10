@@ -23,7 +23,7 @@ typedef struct {
 #define TELEM_STREAM_ON   1
 
 // Prototypes
-void telemSetup(unsigned portBASE_TYPE uxPriority); //To be called in main
+void telemSetup(unsigned portBASE_TYPE uxPriority_save, unsigned portBASE_TYPE uxPriority_flash); //To be called in main
 void telemReadbackSamples(unsigned long);
 void telemSendDataDelay(telemStruct_t* sample, int delaytime_ms);
 void telemEnqueueData(telemStruct_t *data);
