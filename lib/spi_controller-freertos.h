@@ -116,6 +116,7 @@ int spic1BeginTransaction(unsigned char cs);
  */
 void spic1EndTransaction(void);
 void spic1EndTransactionFromISR(void);
+void spic1Deselect(void);
 
 /**
  * Resets port 1.
@@ -191,6 +192,7 @@ int spic2BeginTransaction(unsigned char cs);
  */
 void spic2EndTransaction(void);
 void spic2EndTransactionFromISR(void);
+void spic2Deselect(void);
 
 /**
  * Resets port 2.

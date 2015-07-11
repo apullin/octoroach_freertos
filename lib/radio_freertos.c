@@ -71,10 +71,10 @@
 #define RADIO_AUTOCALIBRATE             (0)
 #define RADIO_CALIB_PERIOD              (300000000) // 5 minutes
 
-#define RADIO_STATE_ACQ_TIME_MS         3
-//#define RADIO_STATE_ACQ_TIME_MS         portMAX_DELAY
-#define RADIO_QUEUE_ACQ_TIME_MS         10
-//#define RADIO_QUEUE_ACQ_TIME_MS         portMAX_DELAY
+//#define RADIO_STATE_ACQ_TIME_MS         3
+#define RADIO_STATE_ACQ_TIME_MS         portMAX_DELAY
+//#define RADIO_QUEUE_ACQ_TIME_MS         10
+#define RADIO_QUEUE_ACQ_TIME_MS         portMAX_DELAY
 
 
 #define radiotaskSTACK_SIZE             configMINIMAL_STACK_SIZE
@@ -536,11 +536,11 @@ void radioIRQStateTransition(unsigned int irq_cause) {
 
             static BaseType_t xHigherPriorityTaskWoken;
             xSemaphoreGiveFromISR(xRadioMutex, &xHigherPriorityTaskWoken);
-            if (xHigherPriorityTaskWoken != pdFALSE) {
-                // We can force a context switch here.  Context switching from an
-                // ISRif (xHigherPriorityTaskWoken != pdFALSE) uses port specific syntax.
-                taskYIELD();
-            }
+            //if (xHigherPriorityTaskWoken != pdFALSE) {
+            //    // We can force a context switch here.  Context switching from an
+            //    // ISRif (xHigherPriorityTaskWoken != pdFALSE) uses port specific syntax.
+            //    taskYIELD();
+            //}
 
         } else if (irq_cause == RADIO_TX_FAILURE) {
             // If no more retries, reset retry counter
@@ -848,6 +848,7 @@ static portTASK_FUNCTION(vRadioRXTask, pvParameters) {
 static portTASK_FUNCTION(vRadioTXTask, pvParameters) {
 
     portBASE_TYPE xStatus;
+    unsigned int txmode;
 
     static MacPacketStruct pkt; //Thread local storage
     //TODO: Is this the right design? The thread can hold 1 packet in limbo that is in neither queue
@@ -857,16 +858,19 @@ static portTASK_FUNCTION(vRadioTXTask, pvParameters) {
         //TODO: Inefficient, due to memory copy? Replace with a simpler mutex for signaling
         
         xStatus = xQueuePeek(radioTXQueue, &pkt, portMAX_DELAY);
-        radioSetStateTx(); //Can block for limited time, waiting to take radio mutex
+        txmode = radioSetStateTx(); //Can block for limited time, waiting to take radio mutex
         //Note, xRadioMutex "taken" == radio being actively used in TX mode
         
         //radioProcessTx can block for limited time to get data from TX queue,
         // BUT that shouldn't happen.
         //TODO: TX now depends on a cascade of blocking calls; revise? 
-        radioProcessTx();
+        if(txmode){
+            radioProcessTx();
+        }
         
         //Go back to RX by default
-        //xSemaphoreGive(xRadioMutex);
+        xSemaphoreTake(xRadioMutex, portMAX_DELAY);
+        xSemaphoreGive(xRadioMutex);
         radioSetStateRx();
         
         //// Alternative: continue RX until packet queue exhausted

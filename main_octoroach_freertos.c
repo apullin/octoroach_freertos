@@ -103,11 +103,11 @@ int main(void) {
     radioSetSrcAddr(RADIO_SRC_ADDR);
 
     //IMU task, runs at 1Khz
-    imuSetup(mainIMU_TASK_PRIORITY);
+    //imuSetup(mainIMU_TASK_PRIORITY);
 
     //Telemetry recording task, runs at 1Khz
-    dfmemSetup();
-    telemSetup(mainTELEM_TASK_SAVE_PRIORITY, mainTELEM_TASK_FLASH_PRIORITY);
+    //dfmemSetup();
+    //telemSetup(mainTELEM_TASK_SAVE_PRIORITY, mainTELEM_TASK_FLASH_PRIORITY);
 
     //Lights test to show cpu is alive
     aliveTestSetup(mainALIVETEST_TASK_PRIORITY);
@@ -119,7 +119,7 @@ int main(void) {
     prvStartupLights();
 
     //Test that sends WHOAMI's and ECHO's at 2Hz
-    //radioTestSetup(mainRADIOTEST_TASK_PRIORITY);
+    radioTestSetup(mainRADIOTEST_TASK_PRIORITY);
 
     /* Start the created tasks running. */
     vTaskStartScheduler();

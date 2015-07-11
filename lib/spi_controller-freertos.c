@@ -232,7 +232,10 @@ void spic1EndTransactionFromISR(void) {
         // ISR uses port specific syntax.
         taskYIELD();
     }
+}
 
+void spic1Deselect(void){
+    SPI1_CS = SPI_CS_IDLE;  // Idle chip select after freeing since may cause irq
 }
 
 void spic2EndTransaction(void) {
@@ -261,6 +264,13 @@ void spic2EndTransactionFromISR(void) {
         taskYIELD();
     }
 
+}
+
+void spic2Deselect(void){
+    if (port_cs_line[1] == 0)
+      SPI2_CS1 = SPI_CS_IDLE;  // Idle chip select
+    if (port_cs_line[1] == 1)
+      SPI2_CS2 = SPI_CS_IDLE;  // Idle chip select
 }
 
 void spic1Reset(void) {

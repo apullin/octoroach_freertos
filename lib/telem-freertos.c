@@ -24,7 +24,7 @@
 //////////////////////////////////////////////////
 //////////      FreeRTOS config        ///////////
 //////////////////////////////////////////////////
-#define TELEM_TASK_PERIOD_MS      1
+#define TELEM_TASK_PERIOD_MS      5
 #define TELEM_QUEUE_SIZE          8
 
 //////////////////////////////////////////////////
@@ -114,12 +114,20 @@ void telemReadbackSamples(unsigned long numSamples) {
     unsigned long i = 0; //will actually be the same as the sampleIndex
 
     telemStruct_t sampleData;
+    
+    TaskHandle_t imutask;
+    imutask = imuGetTaskHandle();
+    vTaskSuspend(imutask);
+    
 
     for (i = 0; i < numSamples; i++) {
         //Retireve data from flash
         telemGetSample(i, sizeof (sampleData), (unsigned char*) (&sampleData));
         //Reliable send, with linear backoff
-
+        
+        //Force a block until SPI DMA readback is done 
+        dfmemWaitDMAFinish();
+        
         radioSendData(RADIO_DST_ADDR, 0, CMD_SPECIAL_TELEMETRY, telemPacketSize,
                 (unsigned char *)(&sampleData), 0);
 //        do {
@@ -132,6 +140,8 @@ void telemReadbackSamples(unsigned long numSamples) {
         
         delaytime_ms = READBACK_DELAY_TIME_MS;
     }
+    
+    vTaskResume(imutask);
 }
 
 void telemSendDataDelay(telemStruct_t* sample, int delaytime_ms) {
