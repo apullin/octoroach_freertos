@@ -16,6 +16,7 @@
 #include "at86rf231_driver.h"
 #include "sclock.h"
 #include "cmd_freertos.h"
+#include "imu_freertos.h"
 
 #include <string.h> //for memcpy
 //#include "debugpins.h"
@@ -76,14 +77,14 @@ portBASE_TYPE vStartTelemTasks( unsigned portBASE_TYPE uxPriority_save, unsigned
 
     xStatus = xTaskCreate(vTelemSaveTask, /* Pointer to the function that implements the task. */
             (const char *) "Telemetry Recording Task", /* Text name for the task. This is to facilitate debugging. */
-            240, /* Stack depth in words. */
+            512, /* Stack depth in words. */
             NULL, /* We are not using the task parameter. */
             uxPriority_save, /* This task will run at priority 1. */
             &xTelemTaskHandle); /* We are not going to use the task handle. */
 
     xStatus = xTaskCreate(vTelemFlashTask, /* Pointer to the function that implements the task. */
             (const char *) "Telemetry Write Task", /* Text name for the task. This is to facilitate debugging. */
-            240, /* Stack depth in words. */
+            512, /* Stack depth in words. */
             NULL, /* We are not using the task parameter. */
             uxPriority_flash, /* This task will run at priority 1. */
             &xTelemWriteTaskHandle); /* We are not going to use the task handle. */

@@ -151,7 +151,7 @@ portBASE_TYPE vStartIMUTask( unsigned portBASE_TYPE uxPriority){
 
     xStatus = xTaskCreate(vIMUTask, /* Pointer to the function that implements the task. */
             (const char *) "IMU Task", /* Text name for the task. This is to facilitate debugging. */
-            240, /* Stack depth in words. */
+            512, /* Stack depth in words. */
             NULL, /* We are not using the task parameter. */
             uxPriority, /* This task will run at priority 1. */
             &xImuTaskHandle); /* We are not going to use the task handle. */

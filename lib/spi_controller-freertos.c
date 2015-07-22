@@ -187,6 +187,30 @@ int spic1BeginTransaction(unsigned char cs) {
     return 0;
 }
 
+int spic1BeginTransactionFromISR(unsigned char cs) {
+    // TODO: Timeout?
+
+    portBASE_TYPE xStatus;
+    
+    // TODO: generalize?
+    if (cs > 0)
+      // Only one CS line is supported
+      return -1;
+
+    static BaseType_t xHigherPriorityTaskWoken;
+    xStatus = xSemaphoreTakeFromISR(xSPI_CHAN1_Mutex, &xHigherPriorityTaskWoken);
+
+    //CRITICAL_SECTION_START;
+    // Reconfigure port
+    SPI1STAT = 0;
+    SPI1CON1 = spicon_ch1[cs];
+    SPI1STAT = SPI_ENABLE & SPI_IDLE_CON & SPI_RX_OVFLOW_CLR;
+    port_cs_line[0] = cs;
+    SPI1_CS = SPI_CS_ACTIVE;    // Activate chip select
+    //CRITICAL_SECTION_END;
+    return 0;
+}
+
 int spic2BeginTransaction(unsigned char cs) {
     // TODO: Timeout?
 
@@ -227,11 +251,11 @@ void spic1EndTransactionFromISR(void) {
     SPI1_CS = SPI_CS_IDLE;  // Idle chip select after freeing since may cause irq
     xSemaphoreGiveFromISR(xSPI_CHAN1_Mutex, &xHigherPriorityTaskWoken);
 
-    if (xHigherPriorityTaskWoken != pdFALSE) {
+    //if (xHigherPriorityTaskWoken != pdFALSE) {
         // We can force a context switch here.  Context switching from an
         // ISR uses port specific syntax.
-        taskYIELD();
-    }
+    //    taskYIELD();
+    //}
 }
 
 void spic1Deselect(void){
@@ -434,6 +458,7 @@ void __attribute__((interrupt, no_auto_psv)) _DMA2Interrupt(void) {
 
 //    portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
     _DMA2IF = 0;
+__TRACE(0x52);
 
     // Call registered callback function
     int_handler_ch1[port_cs_line[0]](SPIC_TRANS_SUCCESS);
@@ -452,6 +477,7 @@ void __attribute__((interrupt, no_auto_psv)) _DMA3Interrupt(void) {
     
 //    portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
     _DMA3IF = 0;
+__TRACE(0x53);
 
     // Call registered callback function
     //int_handler_ch1[port_cs_line[0]](SPIC_TRANS_SUCCESS);
@@ -469,6 +495,7 @@ void __attribute__((interrupt, no_auto_psv)) _DMA4Interrupt(void) {
 
 //    portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
     _DMA4IF = 0;
+__TRACE(0x54);
 
     // Call registered callback function
     int_handler_ch2[port_cs_line[1]](SPIC_TRANS_SUCCESS);
@@ -489,6 +516,7 @@ void __attribute__((interrupt, no_auto_psv)) _DMA5Interrupt(void) {
 
     //    portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
     _DMA5IF = 0;
+__TRACE(0x55);
 
     // Call registered callback function
     //int_handler_ch2[port_cs_line[1]](SPIC_TRANS_SUCCESS);
@@ -595,37 +623,3 @@ static void setupDMASet2 (void)
     //EnableIntDMA5;
     _DMA5IF  = 0;   // Clear DMA interrupt
 }
-
-void vSPIStartTask(unsigned portBASE_TYPE uxPriority) {
-    //Peripheral setup, including DMA
-    //SetupUART1();
-
-    /* Create the queues used by the serial task. */
-    //serialTXQueue = xQueueCreate(UART_TX_QUEUE_SIZE, (unsigned portBASE_TYPE) sizeof ( signed char));
-    //The TX queue is going to be explicitely built for MacPackets
-    //serialTXBlobQueue = xQueueCreate(UART_TX_QUEUE_SIZE, (unsigned portBASE_TYPE) sizeof ( Blob_t));
-    //serialRXCharQueue = xQueueCreate(UART_RX_QUEUE_SIZE, (unsigned portBASE_TYPE) sizeof ( signed char));
-
-//    xSPI_CHAN1_Mutex = xSemaphoreCreateMutex();
-//    xSPI_CHAN2_Mutex = xSemaphoreCreateMutex();
-
-    //Create task
-    //TODO: Should we two separate tasks, one for RX, one for TX?
-    //xTaskCreate(vSPITask, (const char *) "SPITask", spiSTACK_SIZE, NULL, uxPriority, (xTaskHandle *) NULL);
-
-    //Enable UART interrupts
-    //ConfigIntUART1( UART_RX_INT_EN & UART_RX_INT_PR4);
-}
-
-/*
-static portTASK_FUNCTION(vSPITask, pvParameters) {
-    portTickType xLastWakeTime;
-    xLastWakeTime = xTaskGetTickCount();
-    portBASE_TYPE xStatus;
-
-    for (;;) {
-        //TODO: Is yielding neccesary here?
-        //taskYIELD();
-    }
-}
- */

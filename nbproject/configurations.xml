@@ -448,7 +448,7 @@
         <property key="tracecontrol.include.timestamp" value="summarydataenabled"/>
         <property key="tracecontrol.medium" value="0"/>
         <property key="tracecontrol.portselect" value="0"/>
-        <property key="tracecontrol.select" value="0"/>
+        <property key="tracecontrol.select" value="2"/>
         <property key="tracecontrol.spiselect" value="0"/>
         <property key="tracecontrol.stallontracebufferfull" value="false"/>
         <property key="tracecontrol.timerpriority" value="3"/>

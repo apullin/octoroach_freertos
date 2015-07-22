@@ -91,7 +91,7 @@ portBASE_TYPE vStartCmdHandlerTask( unsigned portBASE_TYPE uxPriority){
 
     xStatus = xTaskCreate(vCmdHandlerTask, /* Pointer to the function that implements the task. */
             (const char *) "Cmd Handler Task", /* Text name for the task. This is to facilitate debugging. */
-            240, /* Stack depth in words. */
+            512, /* Stack depth in words. */
             NULL, /* We are not using the task parameter. */
             uxPriority, /* This task will run at priority 1. */
             NULL); /* We are not going to use the task handle. */
@@ -199,6 +199,8 @@ static void cmdEraseMemSector(unsigned char status, unsigned char length, unsign
 void cmdEcho(unsigned char status, unsigned char length, unsigned char *frame) {
     //Note that the destination is the hard-coded RADIO_DST_ADDR
     //todo : extract the destination address properly.
+__TRACE(0x7c);
+    
     radioSendData(RADIO_DST_ADDR, 0, CMD_ECHO, length, frame, 0);
 }
 
@@ -491,8 +493,11 @@ static portTASK_FUNCTION(vCmdHandlerTask, pvParameters) { //FreeRTOS task
     static Payload pld;
 
     for (;;) { //Task loop
+        
         //Blocking wait on incoming command
         xStatus = xQueueReceive(cmdQueue, packet, portMAX_DELAY);
+__TRACE(0x7d);
+        
         //Note: packet has payload and payload->pld_data on heap
 
         //Structure command
@@ -510,8 +515,8 @@ static portTASK_FUNCTION(vCmdHandlerTask, pvParameters) { //FreeRTOS task
         //Delete dynamic length parts of packet, which are on heap
         vPortFree(pld->pld_data);
         vPortFree(pld);
-
-        taskYIELD();
+__TRACE(0x7e);
+        
     }
 }
 

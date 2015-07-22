@@ -110,7 +110,7 @@ int main(void) {
     //telemSetup(mainTELEM_TASK_SAVE_PRIORITY, mainTELEM_TASK_FLASH_PRIORITY);
 
     //Lights test to show cpu is alive
-    aliveTestSetup(mainALIVETEST_TASK_PRIORITY);
+    //aliveTestSetup(mainALIVETEST_TASK_PRIORITY);
     
     //Cmd Handler task
     cmdSetup(CMD_QUEUE_MAX_SIZE, mainCMDHANDLER_TASK_PRIORITY);
@@ -126,6 +126,7 @@ int main(void) {
 
     /* Execution will only reach here if there was insufficient heap to
     start the scheduler. */
+__TRACE(0x78);
     for (;;);
     return 0;
 }
@@ -135,6 +136,7 @@ unsigned long ulIdleCycleCount = 0UL;
 /* Idle hook functions MUST be called vApplicationIdleHook(), take no parameters,
 and return void. */
 void vApplicationIdleHook(void) {
+__TRACE(0x79);
     /* This hook function does nothing but increment a counter. */
     ulIdleCycleCount++;
     Idle();  //dsPIC idle function; CPU core off, wakes on any interrupt
@@ -145,6 +147,7 @@ void vApplicationIdleHook(void) {
 void vApplicationStackOverflowHook( TaskHandle_t xTask,
                                     signed char *pcTaskName ){
     while(1){
+__TRACE(0x7a);
         Nop();
     }
 }
@@ -185,7 +188,7 @@ void radioTestSetup( unsigned portBASE_TYPE uxPriority){
 
     xStatus = xTaskCreate(vRadioTestTask, /* Pointer to the function that implements the task. */
             (const char *) "Radio Test Task", /* Text name for the task. This is to facilitate debugging. */
-            240, /* Stack depth in words. */
+            512, /* Stack depth in words. */
             NULL, /* We are not using the task parameter. */
             uxPriority, /* This task will run at priority 1. */
             NULL); /* We are not going to use the task handle. */
@@ -203,11 +206,12 @@ static portTASK_FUNCTION(vRadioTestTask, pvParameters){
 
     unsigned long pktNum = 1;
     
-    static int sendPeriod = 50; //made a var so we can change this on the fly
+    static int sendPeriod = 100; //made a var so we can change this on the fly
 
     for (;;) {
-        //heapspace = xPortGetFreeHeapSize();
-        heapspace = 666;
+__TRACE(0x7b);
+        heapspace = xPortGetFreeHeapSize();
+        //heapspace = 666;
         sprintf(echoMsg, "FreeRTOS test packet #%lu, heap space: %d", pktNum, heapspace);
         pktNum++;
         
@@ -229,7 +233,7 @@ void aliveTestSetup( unsigned portBASE_TYPE uxPriority){
 
     xStatus = xTaskCreate(vAliveTestTask, /* Pointer to the function that implements the task. */
             (const char *) "Heartbeat task", /* Text name for the task. This is to facilitate debugging. */
-            240, /* Stack depth in words. */
+            512, /* Stack depth in words. */
             NULL, /* We are not using the task parameter. */
             uxPriority, /* This task will run at priority 1. */
             NULL); /* We are not going to use the task handle. */

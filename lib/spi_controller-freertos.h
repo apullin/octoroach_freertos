@@ -110,6 +110,7 @@ void spic1SetCallback(unsigned char cs, SpicIrqHandler handler);
  * This function returns 0 on success and something else on error.
  */
 int spic1BeginTransaction(unsigned char cs);
+int spic1BeginTransactionFromISR(unsigned char cs);
 
 /**
  * End a transaction on port 1.
