@@ -199,7 +199,7 @@ static void cmdEraseMemSector(unsigned char status, unsigned char length, unsign
 void cmdEcho(unsigned char status, unsigned char length, unsigned char *frame) {
     //Note that the destination is the hard-coded RADIO_DST_ADDR
     //todo : extract the destination address properly.
-__TRACE(0x7c);
+__TRACE(0x6a);
     
     radioSendData(RADIO_DST_ADDR, 0, CMD_ECHO, length, frame, 0);
 }
@@ -496,7 +496,7 @@ static portTASK_FUNCTION(vCmdHandlerTask, pvParameters) { //FreeRTOS task
         
         //Blocking wait on incoming command
         xStatus = xQueueReceive(cmdQueue, packet, portMAX_DELAY);
-__TRACE(0x7d);
+__TRACE(0x6b);
         
         //Note: packet has payload and payload->pld_data on heap
 
@@ -515,7 +515,7 @@ __TRACE(0x7d);
         //Delete dynamic length parts of packet, which are on heap
         vPortFree(pld->pld_data);
         vPortFree(pld);
-__TRACE(0x7e);
+__TRACE(0x6c);
         
     }
 }

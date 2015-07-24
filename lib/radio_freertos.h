@@ -112,6 +112,7 @@ void radioSetHardRetries(unsigned char retries);
 
 void radioGetConfiguration(RadioConfiguration *conf);
 void radioGetStatus(RadioStatus *status);
+RadioState radioGetState(void);
 unsigned char radioGetLastRSSI();
 
 void radioSetWatchdogState(unsigned char state);

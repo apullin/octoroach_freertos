@@ -458,7 +458,7 @@ void __attribute__((interrupt, no_auto_psv)) _DMA2Interrupt(void) {
 
 //    portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
     _DMA2IF = 0;
-__TRACE(0x52);
+__TRACE(0x40);
 
     // Call registered callback function
     int_handler_ch1[port_cs_line[0]](SPIC_TRANS_SUCCESS);
@@ -477,7 +477,7 @@ void __attribute__((interrupt, no_auto_psv)) _DMA3Interrupt(void) {
     
 //    portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
     _DMA3IF = 0;
-__TRACE(0x53);
+__TRACE(0x41);
 
     // Call registered callback function
     //int_handler_ch1[port_cs_line[0]](SPIC_TRANS_SUCCESS);
@@ -495,7 +495,7 @@ void __attribute__((interrupt, no_auto_psv)) _DMA4Interrupt(void) {
 
 //    portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
     _DMA4IF = 0;
-__TRACE(0x54);
+__TRACE(0x42);
 
     // Call registered callback function
     int_handler_ch2[port_cs_line[1]](SPIC_TRANS_SUCCESS);
@@ -516,7 +516,7 @@ void __attribute__((interrupt, no_auto_psv)) _DMA5Interrupt(void) {
 
     //    portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
     _DMA5IF = 0;
-__TRACE(0x55);
+__TRACE(0x43);
 
     // Call registered callback function
     //int_handler_ch2[port_cs_line[1]](SPIC_TRANS_SUCCESS);

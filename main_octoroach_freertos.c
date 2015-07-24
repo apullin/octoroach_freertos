@@ -126,7 +126,7 @@ int main(void) {
 
     /* Execution will only reach here if there was insufficient heap to
     start the scheduler. */
-__TRACE(0x78);
+__TRACE(0x66);
     for (;;);
     return 0;
 }
@@ -136,7 +136,7 @@ unsigned long ulIdleCycleCount = 0UL;
 /* Idle hook functions MUST be called vApplicationIdleHook(), take no parameters,
 and return void. */
 void vApplicationIdleHook(void) {
-__TRACE(0x79);
+__TRACE(0x67);
     /* This hook function does nothing but increment a counter. */
     ulIdleCycleCount++;
     Idle();  //dsPIC idle function; CPU core off, wakes on any interrupt
@@ -147,7 +147,7 @@ __TRACE(0x79);
 void vApplicationStackOverflowHook( TaskHandle_t xTask,
                                     signed char *pcTaskName ){
     while(1){
-__TRACE(0x7a);
+__TRACE(0x68);
         Nop();
     }
 }
@@ -209,7 +209,7 @@ static portTASK_FUNCTION(vRadioTestTask, pvParameters){
     static int sendPeriod = 100; //made a var so we can change this on the fly
 
     for (;;) {
-__TRACE(0x7b);
+__TRACE(0x69);
         heapspace = xPortGetFreeHeapSize();
         //heapspace = 666;
         sprintf(echoMsg, "FreeRTOS test packet #%lu, heap space: %d", pktNum, heapspace);
